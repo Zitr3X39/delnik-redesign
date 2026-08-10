@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_rustore_push/flutter_rustore_push.dart';
+// Веб-сборка: у RuStore Push нет web-реализации, и его импорт ломает
+// `flutter build web`. На web подставляется no-op шим (соседний файл).
+// На Android/iOS по-прежнему подключается настоящий пакет.
+import 'package:flutter_rustore_push/flutter_rustore_push.dart'
+    if (dart.library.js_interop) 'rustore_client_web.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Удалённые push-уведомления через RuStore.

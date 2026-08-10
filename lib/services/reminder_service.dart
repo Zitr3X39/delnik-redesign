@@ -1,7 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+// Веб-сборка: flutter_local_notifications не поддерживает web, и его
+// импорт ломает `flutter build web`. На web подставляется no-op шим
+// (соседний файл). На Android/iOS — настоящий пакет, как и было.
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    if (dart.library.js_interop) 'fln_web.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
