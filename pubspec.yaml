@@ -4,7 +4,10 @@ publish_to: 'none'
 version: 1.0.11+11
 
 environment:
-  sdk: ^3.12.2
+  # Пол ослаблен с ^3.12.2: CI (GitHub Actions, stable-канал Flutter)
+  # падал на pub get, т.к. stable не всегда имеет Dart >= 3.12.2.
+  # flutter_lints 6 требует >= 3.8.0 — это и есть безопасный пол.
+  sdk: ^3.8.0
 
 dependencies:
   flutter:
