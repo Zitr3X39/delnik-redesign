@@ -1,0 +1,10 @@
+# ШАБЛОН ключа подписи релиза.
+# 1) Скопируй этот файл в android/key.properties (без .template)
+# 2) Заполни своими значениями (см. store/KEYSTORE_GUIDE.md)
+# 3) НИКОГДА не коммить android/key.properties и сам файл .jks!
+
+storePassword=ТВОЙ_ПАРОЛЬ_ХРАНИЛИЩА
+keyPassword=ТВОЙ_ПАРОЛЬ_КЛЮЧА
+keyAlias=delnik
+# Путь к файлу ключа. На Windows проще абсолютный путь с двойными слешами:
+storeFile=C:\\shabashka_app\\android\\app\\delnik-release.jks

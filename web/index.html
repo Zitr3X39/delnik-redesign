@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Дельник — подработка рядом">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Дельник">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Дельник</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Блокируем «резиновую» прокрутку и перехват свайпа во
+       встроенном браузере Telegram на iPhone: саму страницу двигать
+       нельзя, скроллит только само приложение (Flutter). */
+    html, body {
+      height: 100%;
+      overscroll-behavior: none;
+    }
+    body {
+      margin: 0;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      overflow: hidden;
+      background: #F4F6F8;
+      font-family: sans-serif;
+    }
+    #loading {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+    }
+    .badge {
+      width: 72px; height: 72px; border-radius: 20px; background: #1E88E5;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 40px;
+    }
+    .spinner {
+      width: 28px; height: 28px; border: 3px solid #cfd8e3;
+      border-top-color: #1E88E5; border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+
+  <script src="flutter_bootstrap.js" async></script>
+</head>
+<body>
+  <div id="loading">
+    <div class="badge">⚡</div>
+    <div class="spinner"></div>
+    <div style="color:#607089">Загрузка…</div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('loading');
+      if (el) el.remove();
+    });
+    // Если Flutter не отдал первый кадр за 25 секунд (медленная сеть,
+    // недоступный сервер, битый кэш) — показываем ошибку и кнопку
+    // вместо бесконечного спиннера.
+    setTimeout(function () {
+      var el = document.getElementById('loading');
+      if (!el) return;
+      el.innerHTML =
+        '<div class="badge">⚡</div>' +
+        '<div style="font-size:17px;font-weight:700;color:#1f2937">Не удалось загрузить приложение</div>' +
+        '<div style="color:#607089;text-align:center;max-width:280px">Проверьте интернет и попробуйте ещё раз.</div>' +
+        '<button onclick="location.reload()" style="margin-top:8px;padding:12px 28px;font-size:15px;border:0;border-radius:12px;background:#1E88E5;color:#fff;cursor:pointer">Повторить</button>';
+    }, 25000);
+  </script>
+</body>
+</html>

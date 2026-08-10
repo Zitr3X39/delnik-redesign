@@ -1,0 +1,5012 @@
+===== lib\screens\chat_screen.dart =====
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import '../providers/job_provider.dart';
+import '../utils/format.dart';
+import '../widgets/glass.dart';
+import '../theme/app_theme.dart';
+import 'map_screen.dart';
+import 'user_profile_screen.dart';
+
+class ChatScreen extends StatefulWidget {
+  final String jobId;
+  final String userId;
+  final String? peerName;
+  const ChatScreen({
+    super.key,
+    required this.jobId,
+    required this.userId,
+    this.peerName,
+  });
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final _messageController = TextEditingController();
+  final _focusNode = FocusNode();
+  final _scrollController = ScrollController();
+  bool _sending = false;
+  bool _attaching = false;
+  int _lastMessageCount = 0;
+  bool _descExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    JobProvider.activeChatJobId = widget.jobId;
+    JobProvider.activeChatThreadId = widget.userId;
+    // Когда открывается клавиатура (поле ввода получает фокус) —
+    // прокручиваем чат вниз, чтобы последнее сообщение не пряталось.
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) _scrollToBottom();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final provider = context.read<JobProvider>();
+      await provider.refreshMessages();
+      if (!mounted) return;
+      await provider.markThreadRead(widget.jobId, widget.userId);
+    });
+  }
+
+  @override
+  void dispose() {
+    if (JobProvider.activeChatJobId == widget.jobId &&
+        JobProvider.activeChatThreadId == widget.userId) {
+      JobProvider.activeChatJobId = null;
+      JobProvider.activeChatThreadId = null;
+    }
+    _messageController.dispose();
+    _focusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _reportDialog(BuildContext context, JobProvider provider,
+      String peerId, String peerName) async {
+    const reasons = [
+      'Мошенничество / обман с оплатой',
+      'Грубость / хамство',
+      'Спам / реклама',
+      'Другое',
+    ];
+    String? chosen;
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Пожаловаться на $peerName'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: reasons
+              .map((r) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.flag_outlined, size: 20),
+                    title: Text(r),
+                    onTap: () {
+                      chosen = r;
+                      Navigator.pop(ctx);
+                    },
+                  ))
+              .toList(),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Отмена')),
+        ],
+      ),
+    );
+    if (chosen != null) {
+      await provider.reportUser(peerId, chosen!);
+      JobProvider.messengerKey.currentState?.showSnackBar(
+        const SnackBar(content: Text('Жалоба отправлена. Спасибо!')),
+      );
+    }
+  }
+
+  Widget _buildPeerMenu(BuildContext context, JobProvider provider,
+      String peerId, String peerName) {
+    final blocked = provider.isBlocked(peerId);
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert),
+      onSelected: (value) async {
+        if (value == 'report') {
+          await _reportDialog(context, provider, peerId, peerName);
+        } else if (value == 'block') {
+          provider.blockUser(peerId);
+          JobProvider.messengerKey.currentState?.showSnackBar(
+            SnackBar(content: Text('$peerName заблокирован')),
+          );
+          if (Navigator.canPop(context)) Navigator.pop(context);
+        } else if (value == 'unblock') {
+          provider.unblockUser(peerId);
+          JobProvider.messengerKey.currentState?.showSnackBar(
+            SnackBar(content: Text('$peerName разблокирован')),
+          );
+        }
+      },
+      itemBuilder: (_) => [
+        const PopupMenuItem(
+          value: 'report',
+          child: Row(children: [
+            Icon(Icons.flag_outlined, size: 18, color: Colors.black54),
+            SizedBox(width: 10),
+            Text('Пожаловаться'),
+          ]),
+        ),
+        if (blocked)
+          const PopupMenuItem(
+            value: 'unblock',
+            child: Row(children: [
+              Icon(Icons.lock_open, size: 18, color: Colors.black54),
+              SizedBox(width: 10),
+              Text('Разблокировать'),
+            ]),
+          )
+        else
+          const PopupMenuItem(
+            value: 'block',
+            child: Row(children: [
+              Icon(Icons.block, size: 18, color: Color(0xFFEF4444)),
+              SizedBox(width: 10),
+              Text('Заблокировать'),
+            ]),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
+    final sent = await context
+        .read<JobProvider>()
+        .sendMessage(widget.jobId, widget.userId, text);
+    if (!mounted) return;
+    setState(() => _sending = false);
+    if (sent) {
+      _messageController.clear();
+      _focusNode.requestFocus();
+      _scrollToBottom();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось отправить сообщение. Проверьте интернет.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _attachPhoto() async {
+    if (_attaching || _sending) return;
+    String? uploadedPath;
+    JobProvider? rollbackProvider;
+    try {
+      final picker = ImagePicker();
+      final file = await picker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 60,
+          maxWidth: 1280,
+          maxHeight: 1280);
+      if (file == null) return;
+      setState(() => _attaching = true);
+      final bytes = await file.readAsBytes();
+      final validationError = JobProvider.photoValidationError(bytes);
+      if (validationError != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(validationError)),
+        );
+        return;
+      }
+      if (!mounted) return;
+      final provider = context.read<JobProvider>();
+      rollbackProvider = provider;
+      final result = await provider.uploadChatPhoto(
+        bytes,
+        jobId: widget.jobId,
+        threadId: widget.userId,
+      );
+      if (!result.isSuccess) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.error ?? 'Не удалось загрузить фото.')),
+        );
+        return;
+      }
+      uploadedPath = result.url!;
+      if (!mounted) {
+        await provider.deleteUploadedChatPhotos([uploadedPath]);
+        return;
+      }
+      final sent = await provider.sendMessage(
+        widget.jobId,
+        widget.userId,
+        _messageController.text.trim(),
+        imageUrl: uploadedPath,
+      );
+      if (!sent) {
+        await provider.deleteUploadedChatPhotos([uploadedPath]);
+        uploadedPath = null;
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Фото не отправлено. Проверьте интернет.'),
+          ),
+        );
+        return;
+      }
+      if (!mounted) return;
+      _messageController.clear();
+      _scrollToBottom();
+    } catch (error, stackTrace) {
+      debugPrint('Attach photo failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (uploadedPath != null && rollbackProvider != null) {
+        await rollbackProvider.deleteUploadedChatPhotos([uploadedPath]);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось отправить фотографию.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _attaching = false);
+    }
+  }
+
+  void _openImage(String url) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(12),
+        child: InteractiveViewer(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(url),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _chatImage(String url) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: GestureDetector(
+        onTap: () => _openImage(url),
+        child: Image.network(
+          url,
+          width: 200,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const SizedBox(
+            width: 200,
+            height: 120,
+            child: Icon(Icons.broken_image_outlined),
+          ),
+          loadingBuilder: (context, child, progress) => progress == null
+              ? child
+              : const SizedBox(
+                  width: 200,
+                  height: 120,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _chatPhoto(BuildContext context, String imageRef) {
+    // Старые сообщения содержат публичный URL из bucket photos.
+    if (!JobProvider.isChatPhotoPath(imageRef)) {
+      return _chatImage(imageRef);
+    }
+
+    // Синхронный кэш ссылок: без FutureBuilder, чтобы фото не мерцали
+    // при перестроениях чата (polling, новые сообщения, клавиатура).
+    final url = context.watch<JobProvider>().peekChatPhotoUrl(imageRef);
+    if (url == null || url.isEmpty) {
+      return const SizedBox(
+        width: 200,
+        height: 120,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return _chatImage(url);
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<JobProvider>(
+      builder: (context, provider, _) {
+        final matches =
+            provider.jobs.where((j) => j.id == widget.jobId);
+        if (matches.isEmpty) {
+          return GlassScaffold(
+            title: widget.peerName ?? 'Чат',
+            body: const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Заявка закрыта или удалена — чат недоступен.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54, fontSize: 15),
+                ),
+              ),
+            ),
+          );
+        }
+        final job = matches.first;
+        final messages = job.chatWith(widget.userId);
+        if (_lastMessageCount != messages.length) {
+          _lastMessageCount = messages.length;
+          _scrollToBottom();
+        }
+        final hasUnreadIncoming = messages.any((message) =>
+            message.senderId != JobProvider.currentUserId &&
+            message.readAt == null);
+        if (hasUnreadIncoming) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              provider.markThreadRead(widget.jobId, widget.userId);
+            }
+          });
+        }
+        final title = widget.peerName ?? job.employerName;
+        final meId = JobProvider.currentUserId;
+        final peerId =
+            meId == job.employerId ? widget.userId : job.employerId;
+        final peerPhone = provider.performerById(peerId)?.phone ?? '';
+        return GlassScaffold(
+          title: title,
+          actions: peerId.isEmpty
+              ? null
+              : [_buildPeerMenu(context, provider, peerId, title)],
+          body: Column(
+            children: [
+              if (peerId.isNotEmpty)
+                InkWell(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => UserProfileScreen(
+                        userId: peerId,
+                        fallbackName: title,
+                        asEmployer: peerId == job.employerId,
+                      ),
+                    ),
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person_outline,
+                            size: 18, color: AppTheme.primaryColor),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.primaryColor),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Text('Профиль и отзывы',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.black45)),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.chevron_right,
+                            size: 18, color: AppTheme.primaryColor),
+                      ],
+                    ),
+                  ),
+                ),
+              if (peerPhone.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.phone,
+                          size: 18, color: Color(0xFF16A34A)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text('Телефон для связи: $peerPhone',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        tooltip: 'Скопировать',
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: peerPhone));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Номер скопирован')),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              _ChatJobInfo(
+                address: job.address,
+                description: job.description,
+                expanded: _descExpanded,
+                onToggleDesc: () =>
+                    setState(() => _descExpanded = !_descExpanded),
+                onOpenMap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => JobMapScreen(job: job, jobs: provider.jobs),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: messages.isEmpty
+                    ? const Center(
+                        child: Text('Нет сообщений',
+                            style: TextStyle(color: Colors.white70)))
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) {
+                          final msg = messages[index];
+                          final isMine =
+              msg.senderId.isNotEmpty && msg.senderId == JobProvider.currentUserId;
+                          return Align(
+                            key: ValueKey(
+                              msg.id.isEmpty
+                                  ? '${msg.senderId}_${msg.time.microsecondsSinceEpoch}_$index'
+                                  : msg.id,
+                            ),
+                            alignment: isMine
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              constraints: BoxConstraints(
+                                maxWidth:
+                                    MediaQuery.of(context).size.width * 0.75,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isMine
+                                    ? const Color(0xFF075985)
+                                    : Colors.white.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    msg.senderName,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isMine
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (msg.imageUrl.isNotEmpty)
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 6),
+                                      child: _chatPhoto(context, msg.imageUrl),
+                                    ),
+                                  if (msg.text.isNotEmpty)
+                                    Text(
+                                      msg.text,
+                                      style: TextStyle(
+                                          color: isMine
+                                              ? Colors.white
+                                              : Colors.black87),
+                                    ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        formatTime(msg.time),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: isMine
+                                              ? Colors.white60
+                                              : Colors.black45,
+                                        ),
+                                      ),
+                                      if (isMine) ...[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          msg.readAt == null
+                                              ? Icons.check_rounded
+                                              : Icons.done_all_rounded,
+                                          size: 15,
+                                          color: msg.readAt == null
+                                              ? Colors.white60
+                                              : const Color(0xFF7DD3FC),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed:
+                            (_attaching || _sending) ? null : _attachPhoto,
+                        icon: _attaching
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.4),
+                              )
+                            : const Icon(Icons.attach_file_rounded),
+                        tooltip: 'Прикрепить фото',
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          focusNode: _focusNode,
+                          textInputAction: TextInputAction.send,
+                          decoration: const InputDecoration(
+                            hintText: 'Сообщение...',
+                          ),
+                          onSubmitted: (_) => _sendMessage(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FloatingActionButton(
+                        onPressed: _sending ? null : _sendMessage,
+                        elevation: 0,
+                        child: _sending
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Icon(Icons.send),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Шапка чата: кликабельный адрес (открывает карту с меткой) и
+/// сворачиваемое описание заявки.
+class _ChatJobInfo extends StatelessWidget {
+  final String address;
+  final String description;
+  final bool expanded;
+  final VoidCallback onToggleDesc;
+  final VoidCallback onOpenMap;
+  const _ChatJobInfo({
+    required this.address,
+    required this.description,
+    required this.expanded,
+    required this.onToggleDesc,
+    required this.onOpenMap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAddress = address.trim().isNotEmpty;
+    final hasDescription = description.trim().isNotEmpty;
+    if (!hasAddress && !hasDescription) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasAddress)
+            InkWell(
+              onTap: onOpenMap,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined,
+                        size: 18, color: Color(0xFF0284C7)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        address,
+                        style: const TextStyle(
+                            color: Color(0xFF0284C7),
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const Icon(Icons.map_outlined,
+                        size: 18, color: Color(0xFF0284C7)),
+                  ],
+                ),
+              ),
+            ),
+          if (hasAddress && hasDescription)
+            const Divider(height: 1),
+          if (hasDescription) ...[
+            InkWell(
+              onTap: onToggleDesc,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.notes_rounded,
+                        size: 18, color: Colors.black54),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text('Описание заявки',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                    Icon(
+                      expanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: Colors.black54,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (expanded)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10, left: 26),
+                child: Text(
+                  description,
+                  style: const TextStyle(color: Colors.black87, height: 1.35),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+
+===== lib\screens\messages_screen.dart =====
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/job.dart';
+import '../providers/job_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/glass.dart';
+import 'chat_screen.dart';
+
+/// Одна переписка в списке чатов.
+class _Thread {
+  final String jobId;
+  final String threadUserId; // ключ переписки (id исполнителя)
+  final String peerName; // собеседник
+  final String jobTitle;
+  final bool jobClosed;
+  final ChatMessage last;
+  final int unread;
+  _Thread({
+    required this.jobId,
+    required this.threadUserId,
+    required this.peerName,
+    required this.jobTitle,
+    required this.jobClosed,
+    required this.last,
+    required this.unread,
+  });
+}
+
+/// Вкладка «Чаты»: все переписки текущего пользователя —
+/// как работодателя (с откликнувшимися), так и исполнителя (с заказчиком).
+class MessagesView extends StatelessWidget {
+  const MessagesView({super.key});
+
+  List<_Thread> _threads(JobProvider provider) {
+    final me = JobProvider.currentUserId;
+    final list = <_Thread>[];
+    for (final job in provider.jobs) {
+      if (job.employerId == me) {
+        for (final applicantId in job.applicants) {
+          if (provider.isBlocked(applicantId)) continue;
+          final msgs = job.chats[applicantId];
+          if (msgs == null || msgs.isEmpty) continue;
+          list.add(_Thread(
+            jobId: job.id,
+            threadUserId: applicantId,
+            peerName:
+                provider.performerById(applicantId)?.name ?? 'Исполнитель',
+            jobTitle: job.title,
+            jobClosed: job.isClosed,
+            last: msgs.last,
+            unread: msgs
+                .where((m) => m.senderId != me && m.readAt == null)
+                .length,
+          ));
+        }
+      } else if (job.applicants.contains(me)) {
+        if (provider.isBlocked(job.employerId)) continue;
+        final msgs = job.chats[me];
+        if (msgs == null || msgs.isEmpty) continue;
+        list.add(_Thread(
+          jobId: job.id,
+          threadUserId: me,
+          peerName: job.employerName,
+          jobTitle: job.title,
+          jobClosed: job.isClosed,
+          last: msgs.last,
+          unread: msgs
+              .where((m) => m.senderId != me && m.readAt == null)
+              .length,
+        ));
+      }
+    }
+    list.sort((a, b) => b.last.time.compareTo(a.last.time));
+    return list;
+  }
+
+  String _timeLabel(DateTime t) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final d = DateTime(t.year, t.month, t.day);
+    if (d == today) return '${two(t.hour)}:${two(t.minute)}';
+    if (d == today.subtract(const Duration(days: 1))) return 'вчера';
+    return '${two(t.day)}.${two(t.month)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<JobProvider>();
+    final threads = _threads(provider);
+    if (threads.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text(
+            'Чатов пока нет.\nОткликнитесь на заявку или дождитесь отклика — '
+            'переписка появится здесь.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: Colors.white70, fontSize: 15, height: 1.4),
+          ),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      itemCount: threads.length,
+      itemBuilder: (context, i) {
+        final t = threads[i];
+        final mine = t.last.senderId == JobProvider.currentUserId;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: GlassCard(
+            radius: 20,
+            padding: const EdgeInsets.all(12),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChatScreen(
+                  jobId: t.jobId,
+                  userId: t.threadUserId,
+                  peerName: t.peerName,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: const Color(0xFF0EA5E9),
+                  child: Text(
+                    t.peerName.isNotEmpty
+                        ? t.peerName[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              t.peerName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _timeLabel(t.last.time),
+                            style: const TextStyle(
+                                color: Colors.black45, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              t.jobTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          if (t.jobClosed) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text('закрыто',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.black54,
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              mine ? 'Вы: ${t.last.text}' : t.last.text,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: t.unread > 0
+                                    ? Colors.black87
+                                    : Colors.black54,
+                                fontWeight: t.unread > 0
+                                    ? FontWeight.w700
+                                    : FontWeight.normal,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          if (t.unread > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor,
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              child: Text(
+                                '${t.unread}',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+
+===== lib\screens\map_screen.dart =====
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
+import '../models/job.dart';
+import '../theme/app_theme.dart';
+import '../utils/geo.dart';
+import '../widgets/glass.dart';
+import 'job_detail_screen.dart';
+
+/// Спутниковая карта с пинами заявок (как в Яндекс.Сменах).
+class MapView extends StatefulWidget {
+  final List<Job> jobs;
+  final Job? focusJob;
+  const MapView({super.key, required this.jobs, this.focusJob});
+
+  @override
+  State<MapView> createState() => _MapViewState();
+}
+
+class _MapViewState extends State<MapView>
+    with TickerProviderStateMixin {
+  final MapController _controller = MapController();
+
+  /// Центр карты — город из профиля, а не жёстко Уфа.
+  LatLng get _cityCenter => LatLng(myCityLat, myCityLng);
+
+  /// Город, под который уже настроена камера — чтобы при смене
+  /// города в профиле карта сама переехала куда надо.
+  String _shownCity = myCity;
+  static const double _defaultZoom = 13;
+  AnimationController? _anim;
+  LatLng? _currentLocation;
+  bool _locating = false;
+  MapLayer _layer = MapLayer.satellite;
+
+  @override
+  void didUpdateWidget(covariant MapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Пользователь сменил город — плавно переносим карту в новый город.
+    if (_shownCity != myCity) {
+      _shownCity = myCity;
+      if (widget.focusJob == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _animateTo(_cityCenter, _defaultZoom);
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _anim?.dispose();
+    super.dispose();
+  }
+
+  /// Плавное перемещение камеры к точке.
+  void _animateTo(LatLng dest, double destZoom) {
+    final camera = _controller.camera;
+    final latTween =
+        Tween<double>(begin: camera.center.latitude, end: dest.latitude);
+    final lngTween = Tween<double>(
+        begin: camera.center.longitude, end: dest.longitude);
+    final zoomTween = Tween<double>(begin: camera.zoom, end: destZoom);
+    _anim?.dispose();
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+    _anim = controller;
+    final curved =
+        CurvedAnimation(parent: controller, curve: Curves.easeInOut);
+    controller.addListener(() {
+      _controller.move(
+        LatLng(latTween.evaluate(curved), lngTween.evaluate(curved)),
+        zoomTween.evaluate(curved),
+      );
+    });
+    controller.forward();
+  }
+
+  /// Плавно меняет зум на [delta], оставаясь в той же точке.
+  void _zoomBy(double delta) {
+    final camera = _controller.camera;
+    final newZoom = (camera.zoom + delta).clamp(3.0, 18.0);
+    _animateTo(camera.center, newZoom);
+  }
+
+  Future<void> _goToMe() async {
+    if (_locating) return;
+    setState(() => _locating = true);
+    try {
+      // Служба геолокации выключена в системе — предлагаем открыть настройки.
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        if (mounted) await _promptOpenSettings(serviceDisabled: true);
+        return;
+      }
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.deniedForever) {
+        if (mounted) await _promptOpenSettings(serviceDisabled: false);
+        return;
+      }
+      if (perm == LocationPermission.denied) {
+        _locationFailed();
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition()
+          .timeout(const Duration(seconds: 12));
+      setGpsPosition(pos.latitude, pos.longitude);
+      if (!mounted) return;
+      final point = LatLng(pos.latitude, pos.longitude);
+      setState(() => _currentLocation = point);
+      _animateTo(point, 15);
+    } catch (_) {
+      _locationFailed();
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  void _locationFailed() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Не удалось определить местоположение'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  /// Диалог с предложением открыть системные настройки: включить геолокацию
+  /// (serviceDisabled=true) либо разрешить доступ приложению (false).
+  Future<void> _promptOpenSettings({required bool serviceDisabled}) async {
+    final open = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(serviceDisabled
+            ? 'Геолокация выключена'
+            : 'Нет доступа к геолокации'),
+        content: Text(serviceDisabled
+            ? 'Чтобы найти заявки рядом, включите геолокацию (GPS) в настройках телефона.'
+            : 'Разрешите приложению доступ к геолокации в настройках телефона.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Открыть настройки'),
+          ),
+        ],
+      ),
+    );
+    if (open == true) {
+      if (serviceDisabled) {
+        await Geolocator.openLocationSettings();
+      } else {
+        await Geolocator.openAppSettings();
+      }
+    }
+  }
+
+  void _onJobTap(Job job) {
+    _animateTo(LatLng(job.lat, job.lng), 15);
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) _openJob(context, job);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final active = widget.jobs;
+    // Пакет 12.2: заявки со скрытым сервером адресом на карту не ставим —
+    // у постороннего их координат нет (RLS job_locations).
+    final mappable = active.where((job) => !job.locationHidden).toList();
+
+    return Stack(
+      children: [
+        FlutterMap(
+          mapController: _controller,
+          options: MapOptions(
+            initialCenter: _cityCenter,
+            initialZoom: _defaultZoom,
+            minZoom: 3,
+            maxZoom: 18,
+            // Жесты: щипок пальцами, перетаскивание, двойной тап и колесо —
+            // всё включено, кроме поворота карты.
+            interactionOptions: const InteractionOptions(
+              flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+            ),
+            onMapReady: () {
+              final f = widget.focusJob;
+              if (f != null) {
+                _animateTo(LatLng(f.lat, f.lng), 16);
+              }
+            },
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: _layer == MapLayer.scheme
+                  ? osmSchemeTileUrl
+                  : esriSatelliteTileUrl,
+              userAgentPackageName: 'com.example.shabashka_app',
+              maxZoom: 18,
+            ),
+            // Гибрид: поверх спутника — подписи улиц и границы.
+            if (_layer == MapLayer.hybrid)
+              TileLayer(
+                urlTemplate: esriLabelsTileUrl,
+                userAgentPackageName: 'com.example.shabashka_app',
+                maxZoom: 18,
+                // ignore: deprecated_member_use
+                backgroundColor: Colors.transparent,
+              ),
+            // Моя точка («Вы здесь»).
+            MarkerLayer(
+              markers: _currentLocation == null
+                  ? const []
+                  : [
+                      Marker(
+                        point: _currentLocation!,
+                        width: 28,
+                        height: 28,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black45, blurRadius: 6),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+            ),
+            // Пины заявок.
+            MarkerLayer(
+              markers: mappable.map((job) {
+                return Marker(
+                  point: LatLng(job.lat, job.lng),
+                  width: 150,
+                  height: 64,
+                  alignment: Alignment.topCenter,
+                  child: GestureDetector(
+                    onTap: () => _onJobTap(job),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Colors.black38, blurRadius: 4),
+                            ],
+                          ),
+                          child: Text(
+                            job.payText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.successColor,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          Icons.location_on,
+                          size: 34,
+                          color: job.isUrgent
+                              ? Colors.redAccent
+                              : job.isClosed
+                                  ? Colors.blueGrey
+                                  : const Color(0xFF0284C7),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+        // Кнопки зума + / ?.
+        Positioned(
+          right: 16,
+          bottom: 188,
+          child: Column(
+            children: [
+              FloatingActionButton.small(
+                heroTag: 'zoomIn',
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF0284C7),
+                onPressed: () => _zoomBy(1),
+                child: const Icon(Icons.add),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton.small(
+                heroTag: 'zoomOut',
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF0284C7),
+                onPressed: () => _zoomBy(-1),
+                child: const Icon(Icons.remove),
+              ),
+            ],
+          ),
+        ),
+        // Кнопка «На моё место».
+        Positioned(
+          right: 16,
+          bottom: 118,
+          child: FloatingActionButton(
+            heroTag: 'toMe',
+            backgroundColor: Colors.white,
+            foregroundColor: const Color(0xFF0284C7),
+            onPressed: _locating ? null : _goToMe,
+            child: _locating
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  )
+                : const Icon(Icons.my_location),
+          ),
+        ),
+        // Переключатель слоёв карты (как в Яндекс.Картах).
+        Positioned(
+          left: 16,
+          top: 16,
+          child: _LayerSwitcher(
+            current: _layer,
+            onChanged: (l) => setState(() => _layer = l),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openJob(BuildContext context, Job job) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: SafeArea(
+          top: false,
+          child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(job.title,
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.place_outlined,
+                    size: 16, color: Colors.black54),
+                const SizedBox(width: 4),
+                Expanded(
+                    child: Text(job.address,
+                        style: const TextStyle(color: Colors.black54))),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.payments_outlined,
+                    size: 16, color: AppTheme.successColor),
+                const SizedBox(width: 4),
+                Text(job.payText,
+                    style: const TextStyle(
+                        color: AppTheme.successColor,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(width: 12),
+                const Icon(Icons.near_me,
+                    size: 15, color: Colors.black45),
+                const SizedBox(width: 4),
+                Text(formatDistance(
+                    distanceFromMe(job.lat, job.lng))),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          JobDetailScreen(jobId: job.id),
+                    ),
+                  );
+                },
+                child: const Text('Открыть заявку'),
+              ),
+            ),
+          ],
+        ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Кнопка выбора слоя карты (спутник / схема / гибрид).
+class _LayerSwitcher extends StatelessWidget {
+  final MapLayer current;
+  final ValueChanged<MapLayer> onChanged;
+  const _LayerSwitcher({required this.current, required this.onChanged});
+
+  String _label(MapLayer l) {
+    switch (l) {
+      case MapLayer.satellite:
+        return 'Спутник';
+      case MapLayer.scheme:
+        return 'Схема';
+      case MapLayer.hybrid:
+        return 'Гибрид';
+    }
+  }
+
+  IconData _icon(MapLayer l) {
+    switch (l) {
+      case MapLayer.satellite:
+        return Icons.satellite_alt_outlined;
+      case MapLayer.scheme:
+        return Icons.map_outlined;
+      case MapLayer.hybrid:
+        return Icons.layers_outlined;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      elevation: 3,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.white,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            builder: (_) => SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.black12,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Text('Слой карты',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w800)),
+                  ),
+                  ...MapLayer.values.map((l) => ListTile(
+                        leading: Icon(_icon(l),
+                            color: const Color(0xFF0284C7)),
+                        title: Text(_label(l)),
+                        trailing: current == l
+                            ? const Icon(Icons.check,
+                                color: Color(0xFF0284C7))
+                            : null,
+                        onTap: () {
+                          onChanged(l);
+                          Navigator.pop(context);
+                        },
+                      )),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_icon(current),
+                  size: 20, color: const Color(0xFF0284C7)),
+              const SizedBox(width: 6),
+              Text(_label(current),
+                  style: const TextStyle(
+                      color: Color(0xFF0284C7),
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Полноэкранная карта с фокусом на одной заявке (открывается из деталей заявки).
+class JobMapScreen extends StatelessWidget {
+  final Job job;
+  final List<Job> jobs;
+  const JobMapScreen({super.key, required this.job, required this.jobs});
+
+  @override
+  Widget build(BuildContext context) {
+    return GradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Text(job.address.isEmpty ? 'На карте' : job.address),
+        ),
+        body: MapView(jobs: jobs, focusJob: job),
+      ),
+    );
+  }
+}
+
+
+===== lib\screens\create_job_screen.dart =====
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../models/job.dart';
+import '../providers/job_provider.dart';
+import '../theme/app_theme.dart';
+import '../utils/format.dart';
+import '../utils/geo.dart';
+import '../utils/cities.dart';
+import '../widgets/glass.dart';
+import '../utils/censor.dart';
+import '../utils/categories.dart';
+import 'map_picker_screen.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:image_picker/image_picker.dart';
+
+class CreateJobScreen extends StatefulWidget {
+  const CreateJobScreen({super.key});
+
+  @override
+  State<CreateJobScreen> createState() => _CreateJobScreenState();
+}
+
+class _CreateJobScreenState extends State<CreateJobScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _streetController = TextEditingController();
+  final _houseController = TextEditingController();
+  final _workersController = TextEditingController();
+  final _payController = TextEditingController();
+  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
+  final bool _isUrgent = false;
+  bool _isFixedPay = false;
+  String _category = '';
+  bool _showCategories = false;
+  bool _submitting = false;
+  static const int _maxPhotos = 4;
+  final List<Uint8List> _photos = [];
+
+  Future<void> _pickPhotos() async {
+    if (_photos.length >= _maxPhotos) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Можно добавить не больше 4 фото.')),
+      );
+      return;
+    }
+    try {
+      final picker = ImagePicker();
+      final files = await picker.pickMultiImage(
+          imageQuality: 60, maxWidth: 1280, maxHeight: 1280);
+      if (files.isEmpty) return;
+      String? rejectedReason;
+      for (final file in files) {
+        if (_photos.length >= _maxPhotos) {
+          rejectedReason = 'Можно добавить не больше 4 фото.';
+          break;
+        }
+        final bytes = await file.readAsBytes();
+        final validationError = JobProvider.photoValidationError(bytes);
+        if (validationError != null) {
+          rejectedReason = validationError;
+          continue;
+        }
+        _photos.add(bytes);
+      }
+      if (!mounted) return;
+      setState(() {});
+      if (rejectedReason != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(rejectedReason)),
+        );
+      }
+    } catch (error) {
+      debugPrint('Photo picker failed: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось выбрать фотографию.')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _streetController.dispose();
+    _houseController.dispose();
+    _workersController.dispose();
+    _payController.dispose();
+    super.dispose();
+  }
+
+  /// Российский формат времени (24 часа): 6:00 > 06:00, 18:00.
+  String _fmtTime24(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    final provider = context.read<JobProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final jobDate = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
+    );
+    if (!jobDate.isAfter(DateTime.now())) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Дата и время должны быть в будущем')),
+      );
+      return;
+    }
+    if (provider.jobsLeftToday <= 0) {
+      messenger.showSnackBar(
+        SnackBar(
+            content: Text(
+                'Лимит ${JobProvider.maxJobsPerDay} заявок в день исчерпан. Попробуйте завтра.')),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+    final street = _streetController.text.trim();
+    final house = _houseController.text.trim();
+    // Город заявки — город из профиля автора.
+    final city = provider.me.city.trim().isEmpty
+        ? myCity
+        : provider.me.city.trim();
+    // Примерная точка по адресу (может быть неточной).
+    final guess = await geocodeAddress(street, house, city: city);
+    if (!mounted) return;
+    // Без геокодинга ставим камеру в центр своего города, а не в Уфу.
+    final cityCenter = RuCities.coordsOf(city);
+    final initial = guess != null
+        ? LatLng(guess.lat, guess.lng)
+        : cityCenter != null
+            ? LatLng(cityCenter.lat, cityCenter.lng)
+            : LatLng(myLat, myLng);
+    // Пользователь ставит точную метку на карте.
+    final picked = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapPickerScreen(
+          initial: initial,
+          address: '$street, д. $house',
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (picked == null) {
+      setState(() => _submitting = false);
+      return;
+    }
+    final lat = picked.latitude;
+    final lng = picked.longitude;
+
+    // Загрузка фото в облако. При частичном сбое удаляем уже загруженные
+    // файлы и не публикуем заявку с неполным набором фотографий.
+    final List<String> photoUrls = [];
+    for (final bytes in _photos) {
+      final result = await provider.uploadPhoto(bytes);
+      if (!result.isSuccess) {
+        await provider.deleteUploadedPhotos(photoUrls);
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        messenger.showSnackBar(
+          SnackBar(content: Text(result.error ?? 'Не удалось загрузить фото.')),
+        );
+        return;
+      }
+      photoUrls.add(result.url!);
+    }
+    if (!mounted) {
+      await provider.deleteUploadedPhotos(photoUrls);
+      return;
+    }
+
+    final job = Job(
+      id: '${JobProvider.currentUserId}_${DateTime.now().microsecondsSinceEpoch}',
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
+      address: '$street, д. $house',
+      city: city,
+      lat: lat,
+      lng: lng,
+      workersNeeded: int.tryParse(_workersController.text.trim()) ?? 1,
+      payPerHour: double.tryParse(_payController.text.trim().replaceAll(',', '.')) ?? 0,
+      isFixedPay: _isFixedPay,
+      date: jobDate,
+      employerName: provider.me.name.isEmpty ? 'Вы' : provider.me.name,
+      employerId: JobProvider.currentUserId,
+      category: _category,
+      isUrgent: _isUrgent,
+      photos: photoUrls,
+    );
+    final ok = provider.addJob(job);
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (!ok) {
+      await provider.deleteUploadedPhotos(photoUrls);
+      messenger.showSnackBar(
+        SnackBar(
+            content: Text(
+                'Лимит ${JobProvider.maxJobsPerDay} заявок в день исчерпан. Попробуйте завтра.')),
+      );
+      return;
+    }
+    navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(
+          content: Text('Заявка опубликована! Метка добавлена на карту.')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final jobsLeft = context.watch<JobProvider>().jobsLeftToday;
+    return GlassScaffold(
+      title: 'Создать заявку',
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: GlassCard(
+          radius: 24,
+          padding: const EdgeInsets.all(22),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _SectionLabel(
+                  icon: Icons.work_outline_rounded,
+                  title: 'О работе',
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: (jobsLeft > 0
+                            ? AppTheme.primaryColor
+                            : AppTheme.dangerColor)
+                        .withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          size: 18,
+                          color: jobsLeft > 0
+                              ? AppTheme.primaryColor
+                              : AppTheme.dangerColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Осталось заявок сегодня: $jobsLeft из ${JobProvider.maxJobsPerDay}',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Название работы',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
+                  validator: requiredCleanValidator,
+                  maxLength: 60,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Описание',
+                    prefixIcon: Icon(Icons.notes_rounded),
+                    alignLabelWithHint: true,
+                    hintText:
+                        'Чем предстоит заниматься\nЧто взять с собой\nВо сколько начало',
+                    hintMaxLines: 3,
+                    helperText: 'Чем подробнее — тем быстрее откликнутся',
+                  ),
+                  maxLines: 4,
+                  maxLength: 600,
+                  validator: requiredCleanValidator,
+                ),
+                const SizedBox(height: 16),
+                _PhotoPicker(
+                  photos: _photos,
+                  onAdd: _pickPhotos,
+                  onRemove: (i) => setState(() => _photos.removeAt(i)),
+                ),
+                const SizedBox(height: 20),
+                InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () =>
+                      setState(() => _showCategories = !_showCategories),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.category_outlined,
+                            size: 18, color: Color(0xFF0284C7)),
+                        const SizedBox(width: 8),
+                        const Text('Категория',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.w800)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _category.isEmpty ? 'не выбрана' : _category,
+                            textAlign: TextAlign.right,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _category.isEmpty
+                                    ? Colors.black38
+                                    : const Color(0xFF0284C7)),
+                          ),
+                        ),
+                        AnimatedRotation(
+                          turns: _showCategories ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(Icons.keyboard_arrow_down,
+                              color: Colors.black45),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 200),
+                  crossFadeState: _showCategories
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  firstChild: const SizedBox(width: double.infinity),
+                  secondChild: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: kJobCategories.map((c) {
+                    final sel = _category == c;
+                    return GestureDetector(
+                      onTap: () => setState(() => _category = sel ? '' : c),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: sel
+                              ? const Color(0xFFE0F2FE)
+                              : const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: sel
+                                ? const Color(0xFF0284C7)
+                                    .withValues(alpha: 0.35)
+                                : Colors.black.withValues(alpha: 0.05),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(categoryIcon(c),
+                                size: 16,
+                                color: sel
+                                    ? const Color(0xFF0284C7)
+                                    : Colors.black54),
+                            const SizedBox(width: 6),
+                            Text(c,
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: sel
+                                        ? const Color(0xFF0284C7)
+                                        : Colors.black54)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const _SectionLabel(
+                  icon: Icons.location_on_outlined,
+                  title: 'Место работы',
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _streetController,
+                  decoration: const InputDecoration(
+                    labelText: 'Улица',
+                    hintText: 'например: Ленина или 8 Марта',
+                    prefixIcon: Icon(Icons.location_on_outlined),
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'[0-9A-Za-zА-Яа-яЁё \-.]')),
+                  ],
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Укажите улицу' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _houseController,
+                  decoration: const InputDecoration(
+                    labelText: 'Дом',
+                    hintText: 'например: 45 / 12к2 / 3а',
+                    prefixIcon: Icon(Icons.home_outlined),
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'[0-9A-Za-zА-Яа-яЁё /.\-]')),
+                  ],
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Укажите дом' : null,
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'После заполнения адреса вы поставите точную метку на карте.',
+                  style: TextStyle(color: Colors.black54, fontSize: 12),
+                ),
+                const SizedBox(height: 20),
+                const _SectionLabel(
+                  icon: Icons.payments_outlined,
+                  title: 'Условия и оплата',
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      _PayTypeTab(
+                        icon: Icons.schedule,
+                        label: 'За час',
+                        selected: !_isFixedPay,
+                        onTap: () => setState(() => _isFixedPay = false),
+                      ),
+                      _PayTypeTab(
+                        icon: Icons.payments_outlined,
+                        label: 'Фикс. сумма',
+                        selected: _isFixedPay,
+                        onTap: () => setState(() => _isFixedPay = true),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _workersController,
+                        decoration: const InputDecoration(
+                            labelText: 'Сколько человек'),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Введите число';
+                          final n = int.tryParse(v);
+                          if (n == null) return 'Только цифры';
+                          if (n <= 0) return 'Больше 0';
+                          if (n > 50) return 'Не больше 50';
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _payController,
+                        decoration: InputDecoration(
+                            labelText: _isFixedPay
+                                ? 'Сумма ? за работу'
+                                : 'Оплата ?/час'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d+\.?\d{0,2}')),
+                        ],
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Введите число';
+                          final n = double.tryParse(v.replaceAll(',', '.'));
+                          if (n == null) return 'Только число';
+                          if (n <= 0) return 'Оплата должна быть больше 0';
+                          if (n > 10000000) return 'Слишком большая сумма';
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                const _SectionLabel(
+                  icon: Icons.event_outlined,
+                  title: 'Дата и время',
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _selectedDate,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now()
+                                .add(const Duration(days: 365)),
+                          );
+                          if (!mounted) return;
+                          if (picked != null) {
+                            setState(() => _selectedDate = picked);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FCFF),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppTheme.primaryColor
+                                  .withValues(alpha: 0.18),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Дата',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.black54)),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.event_rounded,
+                                      size: 18,
+                                      color: AppTheme.primaryColor),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      formatDate(_selectedDate),
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.primaryColor),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: _selectedTime,
+                            // Всегда 24-часовой формат (без AM/PM).
+                            builder: (context, child) => MediaQuery(
+                              data: MediaQuery.of(context)
+                                  .copyWith(alwaysUse24HourFormat: true),
+                              child: child!,
+                            ),
+                          );
+                          if (!mounted) return;
+                          if (picked != null) {
+                            setState(() => _selectedTime = picked);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FCFF),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppTheme.primaryColor
+                                  .withValues(alpha: 0.18),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Время',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.black54)),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.access_time_rounded,
+                                      size: 18,
+                                      color: AppTheme.primaryColor),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      _fmtTime24(_selectedTime),
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.primaryColor),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                BigButton(
+                  label: _submitting ? 'ПУБЛИКУЕМ…' : 'ОПУБЛИКОВАТЬ',
+                  icon: Icons.send,
+                  color: AppTheme.primaryColor,
+                  onPressed: _submitting ? null : _submit,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Сегмент переключателя типа оплаты (за час / фикс.).
+class _PayTypeTab extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _PayTypeTab({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppTheme.primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon,
+                  size: 18,
+                  color: selected ? Colors.white : Colors.black54),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: selected ? Colors.white : Colors.black54,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  const _SectionLabel({required this.icon, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(icon, size: 19, color: AppTheme.primaryColor),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+class _PhotoPicker extends StatelessWidget {
+  final List<Uint8List> photos;
+  final VoidCallback onAdd;
+  final void Function(int index) onRemove;
+  const _PhotoPicker({
+    required this.photos,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionLabel(
+          icon: Icons.photo_camera_outlined,
+          title: 'Фото (необязательно)',
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (int i = 0; i < photos.length; i++)
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.memory(
+                      photos[i],
+                      width: 84,
+                      height: 84,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 2,
+                    right: 2,
+                    child: GestureDetector(
+                      onTap: () => onRemove(i),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        padding: const EdgeInsets.all(3),
+                        child: const Icon(Icons.close,
+                            size: 16, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            if (photos.length < _CreateJobScreenState._maxPhotos)
+              GestureDetector(
+                onTap: onAdd,
+                child: Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFD1D5DB)),
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_a_photo_outlined,
+                          color: Color(0xFF6B7280)),
+                      SizedBox(height: 4),
+                      Text('Добавить',
+                          style: TextStyle(
+                              fontSize: 11, color: Color(0xFF6B7280))),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+
+===== lib\screens\edit_job_screen.dart =====
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+
+import '../models/job.dart';
+import '../providers/job_provider.dart';
+import '../theme/app_theme.dart';
+import '../utils/categories.dart';
+import '../utils/censor.dart';
+import '../utils/cities.dart';
+import '../utils/geo.dart';
+import '../widgets/glass.dart';
+
+/// Редактирование своей заявки.
+///
+/// Отклики, переписка, этапы работы и оценки сохраняются: меняются
+/// только условия. После сохранения изменения уходят в облако и видны
+/// остальным пользователям, а откликнувшимся приходит сообщение в чат.
+class EditJobScreen extends StatefulWidget {
+  final Job job;
+  const EditJobScreen({super.key, required this.job});
+
+  @override
+  State<EditJobScreen> createState() => _EditJobScreenState();
+}
+
+class _EditJobScreenState extends State<EditJobScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _streetController;
+  late final TextEditingController _houseController;
+  late final TextEditingController _workersController;
+  late final TextEditingController _payController;
+
+  late DateTime _selectedDate;
+  late TimeOfDay _selectedTime;
+  late bool _isFixedPay;
+  late String _category;
+  late List<String> _photos;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final j = widget.job;
+    _titleController = TextEditingController(text: j.title);
+    _descriptionController = TextEditingController(text: j.description);
+
+    // Адрес хранится в виде «Улица, д. 12» — разбираем обратно.
+    // Пакет 12.2: сервер скрыл адрес (заявка укомплектована чужими
+    // откликами) — форму открываем с пустым адресом, а не с мусором.
+    var street = j.locationHidden ? '' : j.address;
+    var house = '';
+    final marker = j.locationHidden ? -1 : j.address.indexOf(', д. ');
+    if (marker > 0) {
+      street = j.address.substring(0, marker);
+      house = j.address.substring(marker + 5);
+    }
+    _streetController = TextEditingController(text: street);
+    _houseController = TextEditingController(text: house);
+
+    _workersController =
+        TextEditingController(text: j.workersNeeded.toString());
+    _payController = TextEditingController(text: j.payPerHour.toInt().toString());
+    _selectedDate = j.date;
+    _selectedTime = TimeOfDay(hour: j.date.hour, minute: j.date.minute);
+    _isFixedPay = j.isFixedPay;
+    _category = j.category;
+    _photos = List<String>.from(j.photos);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _streetController.dispose();
+    _houseController.dispose();
+    _workersController.dispose();
+    _payController.dispose();
+    super.dispose();
+  }
+
+  String _fmtTime24(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selectedDay = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDay.isBefore(today) ? today : selectedDay,
+      firstDate: today,
+      lastDate: now.add(const Duration(days: 90)),
+    );
+    if (!mounted) return;
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+      builder: (ctx, child) => MediaQuery(
+        data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
+    );
+    if (!mounted) return;
+    if (picked != null) setState(() => _selectedTime = picked);
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _saving = true);
+    final provider = context.read<JobProvider>();
+    final job = widget.job;
+
+    final street = _streetController.text.trim();
+    final house = _houseController.text.trim();
+    final address = '$street, д. $house';
+    final city = provider.cityOfJob(job).trim().isEmpty
+        ? myCity
+        : provider.cityOfJob(job).trim();
+
+    var lat = job.lat;
+    var lng = job.lng;
+    // Адрес изменился — пересчитываем метку, но если геокодер молчит,
+    // оставляем старую точку, чтобы заявка не уехала в центр города.
+    if (address != job.address) {
+      final point = await geocodeAddress(street, house, city: city);
+      if (point != null) {
+        lat = point.lat;
+        lng = point.lng;
+      } else {
+        final coords = RuCities.coordsOf(city);
+        if (coords != null && job.lat == 0 && job.lng == 0) {
+          lat = coords.lat;
+          lng = coords.lng;
+        }
+      }
+    }
+
+    final date = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
+    );
+
+    if (!date.isAfter(DateTime.now())) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Дата и время должны быть в будущем')),
+        );
+      }
+      return;
+    }
+
+    final workers = int.tryParse(_workersController.text.trim()) ??
+        job.workersNeeded;
+    final pay = double.tryParse(_payController.text.trim().replaceAll(',', '.')) ??
+        job.payPerHour;
+
+    final updated = job.copyWithEdits(
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
+      address: address,
+      city: city,
+      lat: lat,
+      lng: lng,
+      workersNeeded: workers,
+      payPerHour: pay,
+      isFixedPay: _isFixedPay,
+      date: date,
+      category: _category,
+      photos: _photos,
+    );
+
+    final ok = provider.updateJob(updated);
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok
+            ? 'Заявка обновлена'
+            : 'Не удалось сохранить: заявка закрыта, чужая или уже есть отклики'),
+      ),
+    );
+    if (ok) Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassScaffold(
+      title: 'Редактирование заявки',
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          children: [
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: const InputDecoration(labelText: 'Заголовок'),
+                    validator: requiredCleanValidator,
+                    maxLength: 60,
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _descriptionController,
+                    decoration: const InputDecoration(labelText: 'Описание работы'),
+                    validator: requiredCleanValidator,
+                    maxLines: 5,
+                    maxLength: 600,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('Категория',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: kJobCategories.map((c) {
+                      final selected = c == _category;
+                      return ChoiceChip(
+                        label: Text(c),
+                        avatar: Icon(categoryIcon(c),
+                            size: 16,
+                            color: selected
+                                ? Colors.white
+                                : AppTheme.primaryColor),
+                        selected: selected,
+                        selectedColor: AppTheme.primaryColor,
+                        labelStyle: TextStyle(
+                          color: selected ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        onSelected: (_) => setState(() => _category = c),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: _streetController,
+                    decoration: const InputDecoration(labelText: 'Улица'),
+                    validator: requiredCleanValidator,
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _houseController,
+                    decoration: const InputDecoration(labelText: 'Дом'),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Укажите номер дома'
+                        : null,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Город заявки не меняется. Чтобы разместить работу в другом '
+                    'городе, создайте новую заявку.',
+                    style: const TextStyle(
+                        color: Colors.black54, fontSize: 12.5, height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _pickDate,
+                          icon: const Icon(Icons.event_outlined, size: 18),
+                          label: Text(
+                            '${_selectedDate.day.toString().padLeft(2, '0')}.'
+                            '${_selectedDate.month.toString().padLeft(2, '0')}.'
+                            '${_selectedDate.year}',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _pickTime,
+                          icon: const Icon(Icons.schedule_outlined, size: 18),
+                          label: Text(_fmtTime24(_selectedTime)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _workersController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration:
+                        const InputDecoration(labelText: 'Сколько человек нужно'),
+                    validator: (v) {
+                      final n = int.tryParse((v ?? '').trim()) ?? 0;
+                      if (n < 1) return 'Минимум 1 человек';
+                      if (n < widget.job.applicants.length) {
+                        return 'Уже откликнулось ${widget.job.applicants.length}';
+                      }
+                      if (n > 50) return 'Не больше 50';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            _isFixedPay ? 'Фиксированная оплата' : 'Оплата за час',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          value: _isFixedPay,
+                          onChanged: (v) => setState(() => _isFixedPay = v),
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextFormField(
+                    controller: _payController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      labelText: _isFixedPay ? 'Сумма за работу, ?' : 'Оплата в час, ?',
+                    ),
+                    validator: (v) {
+                      final n = int.tryParse((v ?? '').trim()) ?? 0;
+                      if (n <= 0) return 'Укажите оплату';
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+            if (_photos.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              GlassCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('Фото',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Лишние снимки можно убрать. Чтобы добавить новые фото, '
+                      'создайте заявку заново.',
+                      style: TextStyle(
+                          color: Colors.black54, fontSize: 12.5, height: 1.4),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _photos.map((url) {
+                        return Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                url,
+                                width: 92,
+                                height: 92,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  width: 92,
+                                  height: 92,
+                                  color: const Color(0xFFF3F4F6),
+                                  child: const Icon(Icons.broken_image_outlined,
+                                      color: Colors.black26),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 2,
+                              right: 2,
+                              child: InkWell(
+                                onTap: () =>
+                                    setState(() => _photos.remove(url)),
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black54,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  padding: const EdgeInsets.all(3),
+                                  child: const Icon(Icons.close_rounded,
+                                      size: 15, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            BigButton(
+              label: _saving ? 'СОХРАНЯЕМ…' : 'СОХРАНИТЬ ИЗМЕНЕНИЯ',
+              icon: Icons.save_outlined,
+              color: AppTheme.primaryColor,
+              onPressed: _saving ? null : _save,
+            ),
+            const SizedBox(height: 10),
+            const Center(
+              child: Text(
+                'Откликнувшимся придёт сообщение, что условия изменились.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 12.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+===== lib\screens\profile_screen.dart =====
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../providers/job_provider.dart';
+import '../theme/app_theme.dart';
+import '../utils/censor.dart';
+import '../utils/cities.dart';
+import '../widgets/city_picker.dart';
+import '../widgets/glass.dart';
+import '../widgets/star_rating.dart';
+import '../widgets/review_tile.dart';
+import 'admin_screen.dart';
+import 'job_detail_screen.dart';
+import '../app_info.dart';
+
+class ProfileScreen extends StatefulWidget {
+  /// Когда true — экран встроен как вкладка (без своей шапки и нижнего бара,
+  /// их предоставляет HomeScreen). Когда false — открывается как обычный экран.
+  final bool embedded;
+  const ProfileScreen({super.key, this.embedded = false});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _editing = false;
+  bool _deletingAccount = false;
+  late TextEditingController _nameController;
+  late TextEditingController _ageController;
+  late TextEditingController _phoneController;
+
+  /// Город выбирается из справочника — так мы знаем его координаты.
+  String _city = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<JobProvider>().syncNow();
+    });
+    final me = context.read<JobProvider>().me;
+    _nameController = TextEditingController(text: me.name);
+    _ageController =
+        TextEditingController(text: me.age > 0 ? '${me.age}' : '');
+    _city = me.city;
+    _phoneController = TextEditingController(text: me.phone);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final name = _nameController.text.trim();
+    final city = _city.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Укажите имя')),
+      );
+      return;
+    }
+    if (city.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Выберите город')),
+      );
+      return;
+    }
+    if (RegExp(r'[0-9]').hasMatch(name)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(noDigitsMessage)),
+      );
+      return;
+    }
+    if (containsProfanity(name) || containsProfanity(city)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(profanityMessage)),
+      );
+      return;
+    }
+    final age = int.tryParse(_ageController.text) ?? 0;
+    if (age < 18 || age > 99) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Возраст должен быть от 18 до 99 лет')),
+      );
+      return;
+    }
+    context.read<JobProvider>().updateProfile(
+          name: name,
+          age: age,
+          city: city,
+        );
+    setState(() => _editing = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Профиль сохранён')),
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Выйти из аккаунта?'),
+        content: const Text(
+            'Чтобы снова войти, потребуется почта и код из письма. '
+            'Анкета и история сохранятся.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Выйти')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await context.read<JobProvider>().logout();
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil('/auth', (r) => false);
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    if (_deletingAccount) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Удалить аккаунт?'),
+        content: const Text(
+          'Профиль, заявки, сообщения, отзывы и фотографии будут удалены '
+          'без возможности восстановления. Это действие нельзя отменить.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Удалить',
+                  style: TextStyle(color: AppTheme.dangerColor))),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _deletingAccount = true);
+    try {
+      await context.read<JobProvider>().deleteAccount();
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/auth', (r) => false);
+    } on AccountDeletionException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Не удалось удалить аккаунт. Повторите попытку позже.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _deletingAccount = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<JobProvider>();
+    final me = provider.me;
+    final uid = JobProvider.currentUserId;
+    final reviews = provider.reviewsForUser(uid);
+    final ratingValue = provider.ratingFor(uid);
+    final ratingCount = provider.ratingCountFor(uid);
+    final completed = provider.completedJobsFor(uid);
+    final body = SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, widget.embedded ? 110 : 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            GlassCard(
+              radius: 24,
+              padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 20),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.18),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.22),
+                          blurRadius: 22,
+                          offset: const Offset(0, 9),
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 43,
+                      backgroundColor: AppTheme.primaryColor,
+                      child: Text(
+                        me.name.isNotEmpty ? me.name[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          fontSize: 35,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  Text(me.name.isEmpty ? 'Без имени' : me.name,
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 9),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7E6),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        StarRating(rating: ratingValue, size: 18),
+                        const SizedBox(width: 7),
+                        Text(
+                          '${ratingValue.toStringAsFixed(1)} · $ratingCount оценок',
+                          style: const TextStyle(
+                              color: Color(0xFF92400E),
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (me.city.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.location_on_outlined,
+                            size: 17, color: Colors.black45),
+                        const SizedBox(width: 4),
+                        Text(me.city,
+                            style: const TextStyle(color: Colors.black54)),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                      label: 'Выполнено',
+                      value: '$completed',
+                      icon: Icons.task_alt),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                      label: 'Оценок',
+                      value: '$ratingCount',
+                      icon: Icons.star_outline),
+                ),
+              ],
+            ),
+            if (reviews.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              GlassCard(
+                radius: 22,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Отзывы о работе',
+                        style: TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 10),
+                    ...reviews.take(10).map((r) => ReviewTile(review: r)),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            GlassCard(
+              radius: 22,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.assignment_ind_rounded,
+                          size: 20, color: AppTheme.primaryColor),
+                      const SizedBox(width: 8),
+                      const Text('Мои заявки',
+                          style: TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w800)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color:
+                              AppTheme.primaryColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text('${provider.myJobs.length}',
+                            style: const TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Заявки остаются здесь даже после закрытия — ничего не пропадает.',
+                    style: TextStyle(color: Colors.black54, fontSize: 12.5),
+                  ),
+                  const SizedBox(height: 10),
+                  if (provider.myJobs.isEmpty)
+                    const Text('Вы ещё не создавали заявок',
+                        style: TextStyle(color: Colors.black54))
+                  else
+                    ...provider.myJobs.map((job) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(13),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    JobDetailScreen(jobId: job.id),
+                              ),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 11),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF3F8FC),
+                                borderRadius: BorderRadius.circular(13),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      job.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  if (job.isClosed)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey
+                                            .withValues(alpha: 0.18),
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                      ),
+                                      child: const Text('ЗАКРЫТО',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.black54,
+                                              fontWeight: FontWeight.w800)),
+                                    )
+                                  else
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.successColor
+                                            .withValues(alpha: 0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                      ),
+                                      child: const Text('АКТИВНА',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: AppTheme.successColor,
+                                              fontWeight: FontWeight.w800)),
+                                    ),
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.chevron_right_rounded,
+                                      color: Colors.black38),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            GlassCard(
+              radius: 22,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Text('Личные данные',
+                          style: TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w800)),
+                      const Spacer(),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 9, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: (_editing
+                                  ? AppTheme.primaryColor
+                                  : AppTheme.successColor)
+                              .withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          _editing ? 'Редактирование' : 'Заполнено',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _editing
+                                ? AppTheme.primaryColor
+                                : AppTheme.successColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                            _editing ? Icons.check : Icons.edit_outlined,
+                            color: AppTheme.primaryColor),
+                        onPressed: () {
+                          if (_editing) {
+                            _save();
+                          } else {
+                            setState(() => _editing = true);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _nameController,
+                    enabled: _editing,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.deny(RegExp(r'[0-9]')),
+                      LengthLimitingTextInputFormatter(50),
+                    ],
+                    decoration: const InputDecoration(
+                        labelText: 'Имя',
+                        prefixIcon: Icon(Icons.person_outline)),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _ageController,
+                    enabled: _editing,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(2),
+                    ],
+                    decoration: const InputDecoration(
+                        labelText: 'Возраст',
+                        prefixIcon: Icon(Icons.cake_outlined)),
+                  ),
+                  const SizedBox(height: 12),
+                  CityField(
+                    value: _city,
+                    enabled: _editing,
+                    onSelected: (RuCity c) => setState(() => _city = c.name),
+                  ),
+                  const SizedBox(height: 12),
+                  // Почта привязана и не редактируется.
+                  TextField(
+                    enabled: false,
+                    decoration: InputDecoration(
+                      labelText: 'Почта (привязана)',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      hintText: me.phone.isEmpty ? 'не указан' : me.phone,
+                    ),
+                    controller: _phoneController,
+                  ),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    child: _editing
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 18),
+                            child: BigButton(
+                              label: 'СОХРАНИТЬ ИЗМЕНЕНИЯ',
+                              icon: Icons.save_outlined,
+                              color: AppTheme.primaryColor,
+                              onPressed: _save,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('Счётчики за сегодня',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Создано заявок: ${context.watch<JobProvider>().jobsUsedToday} из ${JobProvider.maxJobsPerDay}\nОткликов сделано: ${context.watch<JobProvider>().appliesUsedToday} из ${JobProvider.maxAppliesPerDay}',
+                    style: const TextStyle(color: Colors.black54, height: 1.5),
+                  ),
+                ],
+              ),
+            ),
+            // Панель видна только модератору, подтверждённому сервером.
+            if (context.watch<JobProvider>().isModerator) ...[
+              const SizedBox(height: 12),
+              BigButton(
+                label: 'ПАНЕЛЬ МОДЕРАТОРА',
+                icon: Icons.insights_rounded,
+                color: const Color(0xFF0F172A),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminScreen()),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            BigButton(
+              label: 'ВЫЙТИ ИЗ АККАУНТА',
+              icon: Icons.logout_rounded,
+              color: AppTheme.dangerColor,
+              onPressed: _confirmLogout,
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed:
+                  _deletingAccount ? null : _confirmDeleteAccount,
+              icon: _deletingAccount
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.delete_forever_outlined,
+                      size: 18, color: Colors.white70),
+              label: Text(
+                _deletingAccount ? 'Удаляем аккаунт…' : 'Удалить аккаунт',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Center(
+              child: Text(
+                'Дельник v$kAppVersion • created by $kAppAuthor',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      );
+    if (widget.embedded) return body;
+    return GlassScaffold(
+      title: 'Профиль',
+      actions: [
+        IconButton(
+          icon: Icon(_editing ? Icons.check : Icons.edit_outlined),
+          onPressed: () {
+            if (_editing) {
+              _save();
+            } else {
+              setState(() => _editing = true);
+            }
+          },
+        ),
+      ],
+      body: body,
+    );
+  }
+
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  const _StatCard(
+      {required this.label, required this.value, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      radius: 20,
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(icon, color: AppTheme.primaryColor),
+          ),
+          const SizedBox(height: 8),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 22, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(label,
+              style:
+                  const TextStyle(color: Colors.black54, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+
+===== lib\screens\profile_setup_screen.dart =====
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../providers/job_provider.dart';
+import '../theme/app_theme.dart';
+import '../utils/censor.dart';
+import '../utils/cities.dart';
+import '../widgets/city_picker.dart';
+import '../widgets/glass.dart';
+
+/// Первичное заполнение анкеты после подтверждения номера.
+class ProfileSetupScreen extends StatefulWidget {
+  final String phone;
+  const ProfileSetupScreen({super.key, required this.phone});
+
+  @override
+  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+}
+
+class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _ageController = TextEditingController();
+
+  /// Город выбирается из справочника, а не вводится руками: так мы знаем
+  /// координаты города и можем сразу центрировать карту и сортировать ленту.
+  String _city = '';
+  String? _cityError;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    super.dispose();
+  }
+
+  void _finish() {
+    final formOk = _formKey.currentState!.validate();
+    final cityOk = _city.trim().isNotEmpty;
+    if (!cityOk) setState(() => _cityError = 'Выберите город');
+    if (!formOk || !cityOk) return;
+    context.read<JobProvider>().registerUser(
+          phone: widget.phone,
+          name: _nameController.text.trim(),
+          age: int.tryParse(_ageController.text.trim()) ?? 0,
+          city: _city.trim(),
+        );
+    Navigator.pushReplacementNamed(context, JobProvider.takePendingRoute());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassScaffold(
+      title: 'Анкета',
+      showBack: false,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: GlassCard(
+          radius: 24,
+          padding: const EdgeInsets.all(22),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      borderRadius: BorderRadius.circular(21),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.25),
+                          blurRadius: 20,
+                          offset: const Offset(0, 9),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.person_add_alt_1_rounded,
+                        color: Colors.white, size: 34),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Давайте познакомимся',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Эти данные помогут заказчикам и исполнителям узнавать вас',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54, fontSize: 13),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.verified_user_outlined,
+                          color: AppTheme.primaryColor),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Почта подтверждена',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.black54)),
+                            Text(
+                              widget.phone.isEmpty ? '—' : widget.phone,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.lock_rounded,
+                          size: 18, color: Colors.black38),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                TextFormField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.deny(RegExp(r'[0-9]')),
+                    LengthLimitingTextInputFormatter(50),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'Имя или название организации',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: nameCleanValidator,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _ageController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(2),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'Возраст',
+                    prefixIcon: Icon(Icons.cake_outlined),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Укажите возраст';
+                    final n = int.tryParse(v);
+                    if (n == null || n < 18 || n > 99) return 'От 18 до 99';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                CityField(
+                  value: _city,
+                  errorText: _cityError,
+                  onSelected: (RuCity c) => setState(() {
+                    _city = c.name;
+                    _cityError = null;
+                  }),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Заявки вашего города будут показываться первыми. Город можно будет '
+                  'изменить в профиле.',
+                  style: TextStyle(color: Colors.black54, fontSize: 12),
+                ),
+                const SizedBox(height: 26),
+                BigButton(
+                  label: 'ЗАВЕРШИТЬ РЕГИСТРАЦИЮ',
+                  icon: Icons.check_circle_outline_rounded,
+                  color: AppTheme.primaryColor,
+                  onPressed: _finish,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+===== lib\models\performer.dart =====
+class Performer {
+  final String id;
+  String name;
+  String phone;
+  String city;
+  int age;
+  double rating; // репутация как ИСПОЛНИТЕЛЯ (оценивают работодатели)
+  int ratingCount;
+  int completedJobs;
+  double employerRating; // репутация как ЗАКАЗЧИКА (оценивают рабочие)
+  int employerRatingCount;
+  DateTime? loggedOutAt; // момент выхода из аккаунта (3ч отсрочка удаления заявок)
+  List<String> blocked; // id заблокированных пользователей
+  List<String> favorites; // id избранных заявок
+
+  /// Анкета заполнена. Раньше факт регистрации определялся по полю phone,
+  /// но в общую базу phone не попадает (toSharedJson его вырезает) —
+  /// из-за этого при каждом входе пользователя снова вело на анкету. Теперь флаг явный.
+  bool registered;
+
+  /// До какого момента аккаунт заблокирован администратором.
+  /// null — блокировки нет. Далёкая дата (год 9999) — бан навсегда.
+  DateTime? bannedUntil;
+
+  /// Причина блокировки (показывается пользователю).
+  String banReason;
+
+  /// Когда аккаунт был создан — нужно для статистики в панели разработчика.
+  DateTime? createdAt;
+
+  Performer({
+    required this.id,
+    this.name = '',
+    this.phone = '',
+    this.city = '',
+    this.age = 0,
+    this.rating = 0.0,
+    this.ratingCount = 0,
+    this.completedJobs = 0,
+    this.employerRating = 0.0,
+    this.employerRatingCount = 0,
+    this.loggedOutAt,
+    List<String>? blocked,
+    List<String>? favorites,
+    this.registered = false,
+    this.bannedUntil,
+    this.banReason = '',
+    this.createdAt,
+  })  : blocked = blocked ?? [],
+        favorites = favorites ?? [];
+
+  /// Действует ли блокировка прямо сейчас.
+  bool get isBanned {
+    final until = bannedUntil;
+    return until != null && until.isAfter(DateTime.now());
+  }
+
+  /// Бан без срока (навсегда).
+  bool get isPermanentlyBanned {
+    final until = bannedUntil;
+    return until != null && until.year >= 9000;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'phone': phone,
+        'city': city,
+        'age': age,
+        'rating': rating,
+        'ratingCount': ratingCount,
+        'completedJobs': completedJobs,
+        'employerRating': employerRating,
+        'employerRatingCount': employerRatingCount,
+        'loggedOutAt': loggedOutAt?.toUtc().toIso8601String(),
+        'blocked': blocked,
+        'favorites': favorites,
+        'registered': registered,
+        'bannedUntil': bannedUntil?.toUtc().toIso8601String(),
+        'banReason': banReason,
+        'createdAt': createdAt?.toUtc().toIso8601String(),
+      };
+
+  // Версия профиля для ОБЩЕЙ базы (shared_profiles): без телефона и
+  // приватных настроек. blocked/favorites хранятся в private_user_state,
+  // доступной только владельцу строки.
+  Map<String, dynamic> toSharedJson() {
+    final map = toJson();
+    map.remove('phone');
+    map.remove('blocked');
+    map.remove('favorites');
+    return map;
+  }
+
+  factory Performer.fromJson(Map<String, dynamic> json) => Performer(
+        id: json['id'] as String,
+        name: (json['name'] ?? '') as String,
+        phone: (json['phone'] ?? '') as String,
+        city: (json['city'] ?? '') as String,
+        age: (json['age'] ?? 0) as int,
+        rating: (json['rating'] ?? 0).toDouble(),
+        ratingCount: (json['ratingCount'] ?? 0) as int,
+        completedJobs: (json['completedJobs'] ?? 0) as int,
+        employerRating: (json['employerRating'] ?? 0).toDouble(),
+        employerRatingCount: (json['employerRatingCount'] ?? 0) as int,
+        loggedOutAt: json['loggedOutAt'] != null
+            ? DateTime.tryParse('${json['loggedOutAt']}')?.toLocal()
+            : null,
+        blocked: ((json['blocked'] ?? []) as List)
+            .map((e) => e as String)
+            .toList(),
+        favorites: ((json['favorites'] ?? []) as List)
+            .map((e) => e as String)
+            .toList(),
+        // Старые профили без флага: считаем зарегистрированными, если есть имя.
+        registered: (json['registered'] as bool?) ??
+            ((json['name'] ?? '') as String).trim().isNotEmpty,
+        bannedUntil: json['bannedUntil'] != null
+            ? DateTime.tryParse('${json['bannedUntil']}')?.toLocal()
+            : null,
+        banReason: (json['banReason'] ?? '') as String,
+        createdAt: json['createdAt'] != null
+            ? DateTime.tryParse('${json['createdAt']}')?.toLocal()
+            : null,
+      );
+}
+
+
+===== lib\models\review.dart =====
+class Review {
+  final String id;
+  final String jobId;
+  final String authorId;
+  final String authorName;
+  final String targetId;
+  final int stars;
+  final String text;
+  final DateTime createdAt;
+
+  const Review({
+    required this.id,
+    required this.jobId,
+    required this.authorId,
+    required this.authorName,
+    required this.targetId,
+    required this.stars,
+    required this.text,
+    required this.createdAt,
+  });
+
+  factory Review.fromRow(Map<String, dynamic> row) => Review(
+        id: '${row['id'] ?? ''}',
+        jobId: '${row['job_id'] ?? ''}',
+        authorId: '${row['author_id'] ?? ''}',
+        authorName: '${row['author_name'] ?? 'Пользователь'}',
+        targetId: '${row['target_id'] ?? ''}',
+        stars: (row['stars'] as num?)?.toInt() ?? 0,
+        text: '${row['text'] ?? ''}',
+        createdAt: DateTime.tryParse('${row['created_at']}')?.toLocal() ??
+            DateTime.now(),
+      );
+
+  Map<String, dynamic> toRow() => {
+        'id': id,
+        'job_id': jobId,
+        'author_id': authorId,
+        'author_name': authorName,
+        'target_id': targetId,
+        'stars': stars,
+        'text': text,
+        'created_at': createdAt.toUtc().toIso8601String(),
+      };
+}
+
+
+===== lib\services\push_service.dart =====
+import 'package:flutter/foundation.dart';
+import 'package:flutter_rustore_push/flutter_rustore_push.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Удалённые push-уведомления через RuStore.
+/// Работают только на Android и только если у пользователя установлен RuStore.
+/// На вебе и iOS всё тихо пропускается. Ошибки гасятся try/catch, чтобы
+/// пуши никогда не могли уронить приложение.
+class PushService {
+  PushService._();
+  static final PushService instance = PushService._();
+
+  bool _started = false;
+  String? _lastToken;
+
+  bool get _supported =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  /// Вызвать один раз при старте приложения (после Supabase.initialize).
+  Future<void> init() async {
+    if (!_supported || _started) return;
+    _started = true;
+    try {
+      RustorePushClient.attachCallbacks(
+        onNewToken: (token) {
+          _lastToken = token;
+          _saveToken(token);
+        },
+        onMessageReceived: (message) {},
+        onDeletedMessages: () {},
+        onError: (error) {
+          debugPrint('RuStore push error: $error');
+        },
+        onMessageOpenedApp: (message) {},
+      );
+    } catch (e) {
+      debugPrint('RuStore attachCallbacks failed: $e');
+    }
+  }
+
+  /// Вызвать после входа пользователя: получить push-токен и сохранить его
+  /// в таблицу push_tokens (привязка токен -> пользователь).
+  Future<void> register() async {
+    if (!_supported) return;
+    try {
+      final available = await RustorePushClient.available();
+      if (available != true) return;
+    } catch (e) {
+      debugPrint('RuStore available failed: $e');
+      return;
+    }
+    try {
+      final token = await RustorePushClient.getToken();
+      if (token.isNotEmpty) {
+        _lastToken = token;
+        await _saveToken(token);
+      }
+    } catch (e) {
+      debugPrint('RuStore getToken failed: $e');
+    }
+  }
+
+  /// Отвязать токен этого устройства до выхода из текущего аккаунта.
+  Future<void> unregister() async {
+    if (!_supported) return;
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+      var token = _lastToken ?? '';
+      if (token.isEmpty) {
+        final available = await RustorePushClient.available();
+        if (available == true) token = await RustorePushClient.getToken();
+      }
+      if (token.isEmpty) return;
+      await Supabase.instance.client.rpc(
+        'unregister_push_token',
+        params: {'p_token': token},
+      );
+      _lastToken = null;
+    } catch (e) {
+      debugPrint('push_tokens unregister failed: $e');
+    }
+  }
+
+  /// Сохранить/обновить токен текущего пользователя в базе.
+  Future<void> _saveToken(String token) async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null || token.isEmpty) return;
+      _lastToken = token;
+      await Supabase.instance.client.rpc(
+        'register_push_token',
+        params: {
+          'p_token': token,
+          'p_platform': 'android',
+        },
+      );
+    } catch (e) {
+      debugPrint('push_tokens upsert failed: $e');
+    }
+  }
+}
+
+===== lib\utils\geo.dart =====
+import 'dart:convert';
+import 'dart:math';
+import 'package:http/http.dart' as http;
+import 'cities.dart';
+
+// Опорная точка «моё местоположение». Сначала — центр выбранного города,
+// потом — реальная GPS-локация, когда пользователь разрешит геопозицию.
+double myLat = 54.7388;
+double myLng = 55.9721;
+
+/// Город, выбранный пользователем в профиле. От него зависят центр карты,
+/// порядок заявок в ленте и геокодирование адреса при создании заявки.
+String myCity = 'Уфа';
+
+/// Центр выбранного города (не путать с myLat/myLng — там может быть GPS).
+double myCityLat = 54.7388;
+double myCityLng = 55.9721;
+
+/// Была ли уже получена реальная GPS-позиция. Пока нет — считаем расстояния
+/// от центра города, чтобы цифры в ленте были осмысленными, а не «от Уфы».
+bool hasGpsFix = false;
+
+/// Привязывает географию приложения к городу из профиля.
+/// Если GPS ещё не определён, «моё место» тоже становится центром города.
+void setMyCity(String city) {
+  final trimmed = city.trim();
+  if (trimmed.isEmpty) return;
+  myCity = trimmed;
+  final found = RuCities.byName(trimmed);
+  if (found == null) return;
+  myCityLat = found.lat;
+  myCityLng = found.lng;
+  if (!hasGpsFix) {
+    myLat = found.lat;
+    myLng = found.lng;
+  }
+}
+
+/// Запоминает реальную GPS-позицию.
+void setGpsPosition(double lat, double lng) {
+  myLat = lat;
+  myLng = lng;
+  hasGpsFix = true;
+}
+
+double _deg2rad(double d) => d * pi / 180.0;
+
+/// Расстояние между двумя точками в километрах (формула гаверсинуса).
+double distanceKm(double lat1, double lng1, double lat2, double lng2) {
+  const r = 6371.0;
+  final dLat = _deg2rad(lat2 - lat1);
+  final dLng = _deg2rad(lng2 - lng1);
+  final a = sin(dLat / 2) * sin(dLat / 2) +
+      cos(_deg2rad(lat1)) * cos(_deg2rad(lat2)) * sin(dLng / 2) * sin(dLng / 2);
+  return r * 2 * atan2(sqrt(a), sqrt(1 - a));
+}
+
+double distanceFromMe(double lat, double lng) =>
+    distanceKm(myLat, myLng, lat, lng);
+
+/// Расстояние от центра выбранного города — по нему строится порядок
+/// заявок из других городов в ленте (чем дальше — тем ниже).
+double distanceFromMyCity(double lat, double lng) =>
+    distanceKm(myCityLat, myCityLng, lat, lng);
+
+/// Считается ли точка «своим городом» для старых заявок без поля city.
+/// 60 км — запас на пригороды и крупные агломерации.
+bool isNearMyCity(double lat, double lng) =>
+    distanceFromMyCity(lat, lng) <= 60;
+
+String formatDistance(double km) {
+  if (km < 1) return '${(km * 1000).round()} м';
+  return '${km.toStringAsFixed(1)} км';
+}
+
+/// Результат геокодирования.
+class GeoPoint {
+  final double lat;
+  final double lng;
+  const GeoPoint(this.lat, this.lng);
+}
+
+/// Превращает адрес (улица + дом) в указанном городе в координаты
+/// через бесплатный геокодер OpenStreetMap (Nominatim).
+/// Возвращает null, если адрес не найден или нет сети.
+Future<GeoPoint?> geocodeUfaAddress(String street, String house,
+    {String city = ''}) async {
+  final cityName = city.trim().isEmpty ? myCity : city.trim();
+  final query = Uri.encodeQueryComponent('$cityName, $street $house');
+  final url = Uri.parse(
+      'https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ru&q=$query');
+  try {
+    final resp = await http.get(
+      url,
+      headers: {'User-Agent': 'RabochiyApp/1.0 (gig work app)'},
+    ).timeout(const Duration(seconds: 12));
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      if (data is List && data.isNotEmpty) {
+        final first = data.first as Map<String, dynamic>;
+        final lat = double.tryParse('${first['lat']}');
+        final lon = double.tryParse('${first['lon']}');
+        if (lat != null && lon != null) return GeoPoint(lat, lon);
+      }
+    }
+  } catch (_) {
+    // Нет сети / ошибка — вернём null, вызывающий подставит центр города.
+  }
+  return null;
+}
+
+/// Тайлы карты (OpenStreetMap — доступно в РФ без VPN).
+const String satelliteTileUrl =
+    'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+/// Примерная точка по адресу (точную метку ставит пользователь вручную).
+class GeoResult {
+  final double lat;
+  final double lng;
+  final String label;
+  const GeoResult(this.lat, this.lng, this.label);
+}
+
+/// Примерное геокодирование адреса в выбранном городе через Nominatim (OSM).
+Future<GeoResult?> geocodeAddress(String street, String house,
+    {String city = ''}) async {
+  final cityName = city.trim().isEmpty ? myCity : city.trim();
+  final url = Uri.parse(
+      'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&accept-language=ru'
+      '&city=${Uri.encodeQueryComponent(cityName)}'
+      '&country=${Uri.encodeQueryComponent('Россия')}'
+      '&street=${Uri.encodeQueryComponent('$house $street')}');
+  try {
+    final resp = await http.get(
+      url,
+      headers: {'User-Agent': 'RabochiyApp/1.0 (gig work app)'},
+    ).timeout(const Duration(seconds: 12));
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      if (data is List && data.isNotEmpty) {
+        final m = data.first as Map<String, dynamic>;
+        final lat = double.tryParse('${m['lat']}');
+        final lon = double.tryParse('${m['lon']}');
+        if (lat != null && lon != null) {
+          return GeoResult(lat, lon, '${m['display_name'] ?? ''}');
+        }
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+/// Слои карты (переключаются как в Яндекс.Картах).
+enum MapLayer { satellite, scheme, hybrid }
+
+/// Обычная схема OpenStreetMap (оставляем по требованию — работает в РФ).
+const String osmSchemeTileUrl =
+    'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+/// Свежие спутниковые снимки Esri World Imagery (без ключа и без VPN).
+const String esriSatelliteTileUrl =
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+
+/// Прозрачный слой с подписями/границами для «гибрида».
+const String esriLabelsTileUrl =
+    'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+
+
+===== lib\utils\cities.dart =====
+/// Офлайн-справочник городов России: название, регион и координаты центра.
+///
+/// Используется для:
+///  • выбора города при регистрации и в профиле (поиск с живыми совпадениями);
+///  • центрирования карты на выбранном городе;
+///  • сортировки ленты «свой город > ближайшие города».
+///
+/// Данные вшиты в приложение — работает без интернета и без новых зависимостей.
+class RuCity {
+  final String name;
+  final String region;
+  final double lat;
+  final double lng;
+
+  const RuCity(this.name, this.region, this.lat, this.lng);
+
+  /// «Уфа, Башкортостан» — для подписи в списке подсказок.
+  String get label => region.isEmpty || region == name ? name : '$name, $region';
+
+  @override
+  String toString() => label;
+}
+
+/// Приводит строку к виду для сравнения: нижний регистр, ё > е, ъь и дефисы
+/// не мешают поиску («нижнийновгород» найдёт «Нижний Новгород»).
+String normalizeCity(String s) {
+  final lower = s.toLowerCase().replaceAll('ё', 'е').trim();
+  final buf = StringBuffer();
+  for (final ch in lower.split('')) {
+    if (ch == ' ' || ch == '-' || ch == '.' || ch == ',') continue;
+    buf.write(ch);
+  }
+  return buf.toString();
+}
+
+class RuCities {
+  RuCities._();
+
+  static List<RuCity>? _cache;
+  static Map<String, RuCity>? _index;
+
+  /// Все города, отсортированы по убыванию численности населения.
+  static List<RuCity> get all {
+    final cached = _cache;
+    if (cached != null) return cached;
+    final list = <RuCity>[];
+    for (final row in _raw.split('\n')) {
+      final line = row.trim();
+      if (line.isEmpty) continue;
+      final parts = line.split('|');
+      if (parts.length != 4) continue;
+      final lat = double.tryParse(parts[2]);
+      final lng = double.tryParse(parts[3]);
+      if (lat == null || lng == null) continue;
+      list.add(RuCity(parts[0], parts[1], lat, lng));
+    }
+    _cache = list;
+    return list;
+  }
+
+  static Map<String, RuCity> get _byNormalizedName {
+    final cached = _index;
+    if (cached != null) return cached;
+    final map = <String, RuCity>{};
+    for (final c in all) {
+      map.putIfAbsent(normalizeCity(c.name), () => c);
+    }
+    _index = map;
+    return map;
+  }
+
+  /// Точный поиск по названию (для сохранённого в профиле города).
+  static RuCity? byName(String name) {
+    if (name.trim().isEmpty) return null;
+    return _byNormalizedName[normalizeCity(name)];
+  }
+
+  /// Координаты города по названию. null, если город неизвестен.
+  static ({double lat, double lng})? coordsOf(String name) {
+    final c = byName(name);
+    if (c == null) return null;
+    return (lat: c.lat, lng: c.lng);
+  }
+
+  /// Живой поиск совпадений. Пустой запрос > первые [limit] крупнейших городов.
+  ///
+  /// Ранжирование:
+  ///  0 — название начинается с запроса («уфа» > Уфа);
+  ///  1 — с запроса начинается второе слово («новгород» > Нижний Новгород);
+  ///  2 — запрос встречается внутри названия;
+  ///  3 — совпал регион («башкорт» > все города Башкортостана).
+  /// Внутри одной группы порядок — по величине города.
+  static List<RuCity> search(String query, {int limit = 40}) {
+    final q = normalizeCity(query);
+    if (q.isEmpty) return all.take(limit).toList();
+
+    final scored = <({int rank, int order, RuCity city})>[];
+    for (var i = 0; i < all.length; i++) {
+      final city = all[i];
+      final name = normalizeCity(city.name);
+      int? rank;
+      if (name.startsWith(q)) {
+        rank = 0;
+      } else {
+        final words = city.name.toLowerCase().replaceAll('ё', 'е').split(RegExp(r'[\s\-]+'));
+        if (words.skip(1).any((w) => w.startsWith(q))) {
+          rank = 1;
+        } else if (name.contains(q)) {
+          rank = 2;
+        } else if (normalizeCity(city.region).contains(q)) {
+          rank = 3;
+        }
+      }
+      if (rank != null) scored.add((rank: rank, order: i, city: city));
+    }
+
+    scored.sort((a, b) {
+      final byRank = a.rank.compareTo(b.rank);
+      if (byRank != 0) return byRank;
+      return a.order.compareTo(b.order);
+    });
+    return scored.take(limit).map((e) => e.city).toList();
+  }
+
+  /// Ближайший город к точке. Нужен для старых заявок, у которых ещё нет
+  /// поля city — город определяется по координатам метки.
+  ///
+  /// [maxKm] — максимальное удаление; дальше считаем, что город не определён.
+  static RuCity? nearest(double lat, double lng, {double maxKm = 100}) {
+    RuCity? best;
+    var bestKm = double.infinity;
+    for (final c in all) {
+      // Грубая отсечка по градусам — сильно дешевле гаверсинуса.
+      if ((c.lat - lat).abs() > 2.0) continue;
+      if ((c.lng - lng).abs() > 4.0) continue;
+      final dLat = (c.lat - lat) * 111.0;
+      final dLng = (c.lng - lng) * 111.0 * 0.6;
+      final km = dLat * dLat + dLng * dLng;
+      if (km < bestKm) {
+        bestKm = km;
+        best = c;
+      }
+    }
+    if (best == null) return null;
+    return bestKm <= maxKm * maxKm ? best : null;
+  }
+
+  /// Город по умолчанию, если ничего не выбрано.
+  static const RuCity fallback = RuCity('Уфа', 'Башкортостан', 54.7388, 55.9721);
+
+  // Формат строки: Название|Регион|широта|долгота
+  static const String _raw = '''
+Москва|Москва|55.7558|37.6173
+Санкт-Петербург|Санкт-Петербург|59.9391|30.3159
+Новосибирск|Новосибирская обл.|55.0302|82.9204
+Екатеринбург|Свердловская обл.|56.8389|60.6057
+Казань|Татарстан|55.7963|49.1088
+Нижний Новгород|Нижегородская обл.|56.3269|44.0059
+Челябинск|Челябинская обл.|55.1599|61.4026
+Красноярск|Красноярский край|56.0153|92.8932
+Самара|Самарская обл.|53.1959|50.1002
+Уфа|Башкортостан|54.7388|55.9721
+Ростов-на-Дону|Ростовская обл.|47.2225|39.7188
+Краснодар|Краснодарский край|45.0355|38.9753
+Омск|Омская обл.|54.9885|73.3242
+Воронеж|Воронежская обл.|51.6720|39.1843
+Пермь|Пермский край|58.0105|56.2502
+Волгоград|Волгоградская обл.|48.7080|44.5133
+Саратов|Саратовская обл.|51.5336|46.0343
+Тюмень|Тюменская обл.|57.1522|65.5272
+Тольятти|Самарская обл.|53.5303|49.3461
+Барнаул|Алтайский край|53.3548|83.7698
+Ижевск|Удмуртия|56.8527|53.2115
+Ульяновск|Ульяновская обл.|54.3142|48.4031
+Иркутск|Иркутская обл.|52.2870|104.3050
+Хабаровск|Хабаровский край|48.4827|135.0838
+Ярославль|Ярославская обл.|57.6261|39.8845
+Владивосток|Приморский край|43.1155|131.8855
+Махачкала|Дагестан|42.9849|47.5047
+Томск|Томская обл.|56.4846|84.9476
+Оренбург|Оренбургская обл.|51.7682|55.0969
+Кемерово|Кемеровская обл.|55.3547|86.0873
+Новокузнецк|Кемеровская обл.|53.7596|87.1216
+Рязань|Рязанская обл.|54.6295|39.7415
+Астрахань|Астраханская обл.|46.3497|48.0408
+Набережные Челны|Татарстан|55.7436|52.3958
+Пенза|Пензенская обл.|53.2007|45.0046
+Липецк|Липецкая обл.|52.6031|39.5708
+Киров|Кировская обл.|58.6035|49.6679
+Чебоксары|Чувашия|56.1439|47.2489
+Тула|Тульская обл.|54.1961|37.6182
+Калининград|Калининградская обл.|54.7104|20.4522
+Балашиха|Московская обл.|55.7963|37.9385
+Курск|Курская обл.|51.7373|36.1874
+Севастополь|Севастополь|44.6166|33.5254
+Сочи|Краснодарский край|43.5855|39.7231
+Ставрополь|Ставропольский край|45.0428|41.9734
+Улан-Удэ|Бурятия|51.8335|107.5841
+Тверь|Тверская обл.|56.8587|35.9176
+Магнитогорск|Челябинская обл.|53.4186|58.9797
+Иваново|Ивановская обл.|56.9997|40.9736
+Брянск|Брянская обл.|53.2434|34.3639
+Белгород|Белгородская обл.|50.5952|36.5872
+Сургут|ХМАО — Югра|61.2540|73.3962
+Владимир|Владимирская обл.|56.1290|40.4070
+Нижний Тагил|Свердловская обл.|57.9195|59.9650
+Архангельск|Архангельская обл.|64.5393|40.5187
+Чита|Забайкальский край|52.0340|113.4994
+Симферополь|Крым|44.9521|34.1024
+Калуга|Калужская обл.|54.5293|36.2754
+Смоленск|Смоленская обл.|54.7818|32.0401
+Волжский|Волгоградская обл.|48.7860|44.7797
+Саранск|Мордовия|54.1838|45.1749
+Череповец|Вологодская обл.|59.1269|37.9093
+Курган|Курганская обл.|55.4408|65.3411
+Орёл|Орловская обл.|52.9668|36.0625
+Вологда|Вологодская обл.|59.2205|39.8915
+Якутск|Якутия|62.0281|129.7326
+Владикавказ|Северная Осетия|43.0241|44.6814
+Подольск|Московская обл.|55.4312|37.5447
+Грозный|Чечня|43.3169|45.6981
+Мурманск|Мурманская обл.|68.9585|33.0827
+Тамбов|Тамбовская обл.|52.7213|41.4523
+Петрозаводск|Карелия|61.7849|34.3469
+Стерлитамак|Башкортостан|53.6300|55.9308
+Нижневартовск|ХМАО — Югра|60.9397|76.5696
+Кострома|Костромская обл.|57.7665|40.9269
+Новороссийск|Краснодарский край|44.7239|37.7686
+Йошкар-Ола|Марий Эл|56.6316|47.8964
+Химки|Московская обл.|55.8892|37.4450
+Таганрог|Ростовская обл.|47.2362|38.8969
+Комсомольск-на-Амуре|Хабаровский край|50.5500|137.0079
+Сыктывкар|Коми|61.6688|50.8364
+Нальчик|Кабардино-Балкария|43.4981|43.6189
+Нижнекамск|Татарстан|55.6366|51.8245
+Шахты|Ростовская обл.|47.7085|40.2158
+Дзержинск|Нижегородская обл.|56.2377|43.4602
+Орск|Оренбургская обл.|51.2296|58.4753
+Братск|Иркутская обл.|56.1514|101.6340
+Благовещенск|Амурская обл.|50.2907|127.5272
+Энгельс|Саратовская обл.|51.4839|46.1249
+Ангарск|Иркутская обл.|52.5406|103.8887
+Королёв|Московская обл.|55.9142|37.8255
+Великий Новгород|Новгородская обл.|58.5215|31.2755
+Старый Оскол|Белгородская обл.|51.2967|37.8353
+Мытищи|Московская обл.|55.9105|37.7365
+Псков|Псковская обл.|57.8194|28.3320
+Люберцы|Московская обл.|55.6758|37.8939
+Бийск|Алтайский край|52.5393|85.2072
+Прокопьевск|Кемеровская обл.|53.9058|86.7195
+Южно-Сахалинск|Сахалинская обл.|46.9591|142.7380
+Армавир|Краснодарский край|44.9892|41.1234
+Балаково|Саратовская обл.|52.0272|47.8007
+Рыбинск|Ярославская обл.|58.0446|38.8428
+Северодвинск|Архангельская обл.|64.5635|39.8302
+Абакан|Хакасия|53.7156|91.4292
+Петропавловск-Камчатский|Камчатский край|53.0370|158.6559
+Норильск|Красноярский край|69.3535|88.2027
+Сызрань|Самарская обл.|53.1585|48.4741
+Волгодонск|Ростовская обл.|47.5166|42.1544
+Каменск-Уральский|Свердловская обл.|56.4147|61.9187
+Уссурийск|Приморский край|43.7970|131.9511
+Новочеркасск|Ростовская обл.|47.4222|40.0939
+Златоуст|Челябинская обл.|55.1714|59.6503
+Электросталь|Московская обл.|55.7847|38.4447
+Альметьевск|Татарстан|54.9013|52.2971
+Салават|Башкортостан|53.3617|55.9245
+Миасс|Челябинская обл.|55.0455|60.1084
+Керчь|Крым|45.3560|36.4674
+Копейск|Челябинская обл.|55.1164|61.6142
+Пятигорск|Ставропольский край|44.0486|43.0594
+Коломна|Московская обл.|55.0794|38.7783
+Хасавюрт|Дагестан|43.2506|46.5872
+Одинцово|Московская обл.|55.6789|37.2634
+Кисловодск|Ставропольский край|43.9052|42.7168
+Домодедово|Московская обл.|55.4400|37.7597
+Красногорск|Московская обл.|55.8317|37.3300
+Серпухов|Московская обл.|54.9146|37.4117
+Новомосковск|Тульская обл.|54.0110|38.2905
+Нефтеюганск|ХМАО — Югра|61.0884|72.6316
+Первоуральск|Свердловская обл.|56.9083|59.9425
+Черкесск|Карачаево-Черкесия|44.2269|42.0578
+Дербент|Дагестан|42.0678|48.2900
+Орехово-Зуево|Московская обл.|55.8055|38.9781
+Невинномысск|Ставропольский край|44.6383|41.9455
+Батайск|Ростовская обл.|47.1381|39.7519
+Димитровград|Ульяновская обл.|54.2186|49.6197
+Щёлково|Московская обл.|55.9225|37.9694
+Кызыл|Тыва|51.7191|94.4378
+Обнинск|Калужская обл.|55.0968|36.6113
+Новый Уренгой|ЯНАО|66.0834|76.6809
+Октябрьский|Башкортостан|54.4815|53.4653
+Каспийск|Дагестан|42.8814|47.6383
+Муром|Владимирская обл.|55.5731|42.0526
+Северск|Томская обл.|56.6031|84.8797
+Ноябрьск|ЯНАО|63.1935|75.4514
+Новочебоксарск|Чувашия|56.1094|47.4794
+Жуковский|Московская обл.|55.5952|38.1200
+Пушкино|Московская обл.|56.0104|37.8471
+Ачинск|Красноярский край|56.2690|90.4995
+Северобайкальск|Бурятия|55.6350|109.3200
+Каменск-Шахтинский|Ростовская обл.|48.3167|40.2667
+Ессентуки|Ставропольский край|44.0446|42.8588
+Елец|Липецкая обл.|52.6224|38.5013
+Березники|Пермский край|59.4083|56.8069
+Майкоп|Адыгея|44.6098|40.1006
+Элиста|Калмыкия|46.3078|44.2558
+Назрань|Ингушетия|43.2256|44.7664
+Магас|Ингушетия|43.1687|44.8128
+Горно-Алтайск|Алтай|51.9581|85.9603
+Биробиджан|Еврейская АО|48.7947|132.9217
+Магадан|Магаданская обл.|59.5638|150.8065
+Анадырь|Чукотский АО|64.7314|177.4969
+Салехард|ЯНАО|66.5299|66.6141
+Ханты-Мансийск|ХМАО — Югра|61.0034|69.0189
+Нарьян-Мар|Ненецкий АО|67.6380|53.0069
+Тобольск|Тюменская обл.|58.1994|68.2542
+Ишим|Тюменская обл.|56.1122|69.4906
+Нягань|ХМАО — Югра|62.1450|65.3906
+Когалым|ХМАО — Югра|62.2626|74.4832
+Урай|ХМАО — Югра|60.1300|64.7970
+Мегион|ХМАО — Югра|61.0326|76.1010
+Лангепас|ХМАО — Югра|61.2540|75.1801
+Радужный|ХМАО — Югра|62.1333|77.4667
+Губкинский|ЯНАО|64.4392|76.4818
+Муравленко|ЯНАО|63.7897|74.5150
+Надым|ЯНАО|65.5333|72.5167
+Лабытнанги|ЯНАО|66.6572|66.4183
+Нефтекамск|Башкортостан|56.0885|54.2482
+Туймазы|Башкортостан|54.6009|53.6947
+Белорецк|Башкортостан|53.9670|58.4020
+Ишимбай|Башкортостан|53.4530|56.0400
+Кумертау|Башкортостан|52.7621|55.7906
+Мелеуз|Башкортостан|52.9584|55.9276
+Сибай|Башкортостан|52.7186|58.6650
+Бирск|Башкортостан|55.4172|55.5486
+Учалы|Башкортостан|54.3050|59.3672
+Дюртюли|Башкортостан|55.4839|54.8620
+Янаул|Башкортостан|56.2667|54.9333
+Бугульма|Татарстан|54.5378|52.7969
+Елабуга|Татарстан|55.7614|52.0656
+Зеленодольск|Татарстан|55.8467|48.5100
+Чистополь|Татарстан|55.3667|50.6333
+Лениногорск|Татарстан|54.5972|52.4581
+Сарапул|Удмуртия|56.4667|53.8000
+Глазов|Удмуртия|58.1389|52.6583
+Воткинск|Удмуртия|57.0514|53.9861
+Соликамск|Пермский край|59.6483|56.7708
+Чайковский|Пермский край|56.7783|54.1519
+Кунгур|Пермский край|57.4306|56.9403
+Серов|Свердловская обл.|59.6042|60.5772
+Новоуральск|Свердловская обл.|57.2472|60.0842
+Асбест|Свердловская обл.|57.0053|61.4581
+Верхняя Пышма|Свердловская обл.|56.9744|60.5806
+Полевской|Свердловская обл.|56.4933|60.2039
+Ревда|Свердловская обл.|56.8014|59.9106
+Краснотурьинск|Свердловская обл.|59.7647|60.1997
+Верхний Уфалей|Челябинская обл.|56.0500|60.2333
+Троицк|Челябинская обл.|54.0847|61.5581
+Озёрск|Челябинская обл.|55.7628|60.7031
+Сатка|Челябинская обл.|55.0417|59.0339
+Чебаркуль|Челябинская обл.|54.9781|60.3728
+Анжеро-Судженск|Кемеровская обл.|56.0781|86.0269
+Ленинск-Кузнецкий|Кемеровская обл.|54.6647|86.1758
+Киселёвск|Кемеровская обл.|54.0006|86.6386
+Междуреченск|Кемеровская обл.|53.6939|88.0603
+Юрга|Кемеровская обл.|55.7194|84.8869
+Бердск|Новосибирская обл.|54.7583|83.1075
+Искитим|Новосибирская обл.|54.6428|83.3061
+Куйбышев|Новосибирская обл.|55.4489|78.3225
+Рубцовск|Алтайский край|51.5011|81.2069
+Новоалтайск|Алтайский край|53.3922|83.9317
+Белово|Кемеровская обл.|54.4222|86.3050
+Минусинск|Красноярский край|53.7100|91.6900
+Канск|Красноярский край|56.2000|95.7167
+Железногорск|Красноярский край|56.2528|93.5322
+Зеленогорск|Красноярский край|56.1131|94.5872
+Усть-Илимск|Иркутская обл.|58.0000|102.6667
+Усолье-Сибирское|Иркутская обл.|52.7561|103.6389
+Черемхово|Иркутская обл.|53.1500|103.0833
+Находка|Приморский край|42.8244|132.8931
+Артём|Приморский край|43.3500|132.1833
+Арсеньев|Приморский край|44.1667|133.2667
+Амурск|Хабаровский край|50.2244|136.9081
+Свободный|Амурская обл.|51.3833|128.1333
+Белогорск|Амурская обл.|50.9167|128.4667
+Корсаков|Сахалинская обл.|46.6333|142.7833
+Холмск|Сахалинская обл.|47.0500|142.0500
+Нефтегорск|Самарская обл.|52.7972|51.1631
+Новокуйбышевск|Самарская обл.|53.0956|49.9456
+Чапаевск|Самарская обл.|52.9772|49.7089
+Жигулёвск|Самарская обл.|53.4056|49.4944
+Отрадный|Самарская обл.|53.3789|51.3506
+Кузнецк|Пензенская обл.|53.1167|46.6000
+Балашов|Саратовская обл.|51.5500|43.1667
+Вольск|Саратовская обл.|52.0500|47.3833
+Мичуринск|Тамбовская обл.|52.8919|40.4939
+Рассказово|Тамбовская обл.|52.6500|41.8833
+Борисоглебск|Воронежская обл.|51.3667|42.0833
+Лиски|Воронежская обл.|50.9833|39.5167
+Россошь|Воронежская обл.|50.2000|39.5667
+Губкин|Белгородская обл.|51.2839|37.5619
+Железногорск|Курская обл.|52.3333|35.3500
+Ливны|Орловская обл.|52.4222|37.6081
+Мценск|Орловская обл.|53.2794|36.5789
+Клинцы|Брянская обл.|52.7500|32.2333
+Новозыбков|Брянская обл.|52.5333|31.9333
+Вязьма|Смоленская обл.|55.2119|34.2969
+Рославль|Смоленская обл.|53.9500|32.8667
+Ржев|Тверская обл.|56.2622|34.3286
+Вышний Волочёк|Тверская обл.|57.5833|34.5667
+Кимры|Тверская обл.|56.8703|37.3536
+Боровичи|Новгородская обл.|58.3833|33.9167
+Старая Русса|Новгородская обл.|57.9903|31.3536
+Великие Луки|Псковская обл.|56.3333|30.5333
+Гатчина|Ленинградская обл.|59.5764|30.1281
+Выборг|Ленинградская обл.|60.7100|28.7500
+Сосновый Бор|Ленинградская обл.|59.8994|29.0839
+Всеволожск|Ленинградская обл.|60.0167|30.6333
+Кингисепп|Ленинградская обл.|59.3736|28.6103
+Тихвин|Ленинградская обл.|59.6444|33.5292
+Кировск|Мурманская обл.|67.6142|33.6725
+Апатиты|Мурманская обл.|67.5675|33.4064
+СеверомоРск|Мурманская обл.|69.0703|33.4161
+Ухта|Коми|63.5667|53.6833
+Воркута|Коми|67.4989|64.0381
+Котлас|Архангельская обл.|61.2542|46.6500
+Великий Устюг|Вологодская обл.|60.7597|46.3053
+Ковров|Владимирская обл.|56.3569|41.3161
+Александров|Владимирская обл.|56.3928|38.7136
+Гусь-Хрустальный|Владимирская обл.|55.6203|40.6581
+Арзамас|Нижегородская обл.|55.3833|43.8167
+Саров|Нижегородская обл.|54.9333|43.3167
+Кстово|Нижегородская обл.|56.1500|44.2000
+Бор|Нижегородская обл.|56.3567|44.0764
+Павлово|Нижегородская обл.|55.9639|43.0894
+Выкса|Нижегородская обл.|55.3167|42.1667
+Шуя|Ивановская обл.|56.8556|41.3792
+Кинешма|Ивановская обл.|57.4444|42.1667
+Переславль-Залесский|Ярославская обл.|56.7333|38.8500
+Углич|Ярославская обл.|57.5262|38.3200
+Тутаев|Ярославская обл.|57.8833|39.5333
+НоворосСийск|Краснодарский край|44.7239|37.7686
+Анапа|Краснодарский край|44.8949|37.3164
+Геленджик|Краснодарский край|44.5622|38.0848
+Ейск|Краснодарский край|46.7111|38.2769
+Туапсе|Краснодарский край|44.1000|39.0833
+Славянск-на-Кубани|Краснодарский край|45.2569|38.1250
+Кропоткин|Краснодарский край|45.4333|40.5667
+Тихорецк|Краснодарский край|45.8500|40.1167
+Азов|Ростовская обл.|47.1122|39.4231
+Гуково|Ростовская обл.|48.0500|39.9333
+Новошахтинск|Ростовская обл.|47.7569|39.9339
+Сальск|Ростовская обл.|46.4750|41.5417
+Минеральные Воды|Ставропольский край|44.2119|43.1361
+Георгиевск|Ставропольский край|44.1500|43.4667
+Будённовск|Ставропольский край|44.7833|44.1667
+Железноводск|Ставропольский край|44.1358|43.0300
+Избербаш|Дагестан|42.5667|47.8667
+Кизляр|Дагестан|43.8500|46.7167
+Буйнакск|Дагестан|42.8181|47.1181
+Прохладный|Кабардино-Балкария|43.7597|44.0231
+Беслан|Северная Осетия|43.1922|44.5406
+Урус-Мартан|Чечня|43.1264|45.5378
+Гудермес|Чечня|43.3500|46.1000
+Шали|Чечня|43.1500|45.9000
+Аргун|Чечня|43.2939|45.8722
+Ялта|Крым|44.4952|34.1663
+Евпатория|Крым|45.1906|33.3667
+Феодосия|Крым|45.0319|35.3822
+Джанкой|Крым|45.7089|34.3931
+Бахчисарай|Крым|44.7522|33.8608
+Саки|Крым|45.1333|33.6000
+Алушта|Крым|44.6764|34.4103
+Судак|Крым|44.8494|34.9750
+Донецк|ДНР|48.0159|37.8028
+Луганск|ЛНР|48.5740|39.3078
+Мариуполь|ДНР|47.0951|37.5413
+Мелитополь|Запорожская обл.|46.8489|35.3653
+Бердянск|Запорожская обл.|46.7553|36.7885
+Херсон|Херсонская обл.|46.6354|32.6169
+Генеральское|Крым|44.8000|34.5000
+''';
+}
+
+
+===== lib\widgets\glass.dart =====
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
+
+/// Градиентный фон для эффекта «жидкого стекла».
+class GradientBackground extends StatelessWidget {
+  final Widget child;
+  const GradientBackground({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.bgGradient,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Оборачивает [child] и слегка «вдавливает» его при нажатии.
+/// Использует пассивный Listener — не мешает обычному тапу и InkWell.
+class _Pressable extends StatefulWidget {
+  final Widget child;
+  final bool enabled;
+  const _Pressable({required this.child, this.enabled = true});
+
+  @override
+  State<_Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<_Pressable> {
+  bool _down = false;
+
+  void _set(bool v) {
+    if (!widget.enabled) return;
+    if (_down != v) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (_) => _set(true),
+      onPointerUp: (_) => _set(false),
+      onPointerCancel: (_) => _set(false),
+      child: AnimatedScale(
+        scale: _down ? 0.975 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Матово-стеклянная карточка.
+class GlassCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final VoidCallback? onTap;
+  final double opacity;
+  final double radius;
+
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.onTap,
+    this.opacity = 0.88,
+    this.radius = 20,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final inner = Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: kIsWeb ? 0.95 : opacity),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+            color: Colors.white.withValues(alpha: 0.72), width: 1),
+        // На вебе (особенно Safari/iPhone) тяжёлые тени грузят
+        // композитинг при прокрутке — оставляем одну лёгкую.
+        boxShadow: kIsWeb
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF075985).withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: const Color(0xFF075985).withValues(alpha: 0.10),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.35),
+                  blurRadius: 1,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(radius),
+          child: Padding(padding: padding, child: child),
+        ),
+      ),
+    );
+
+    final Widget card = kIsWeb
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(radius),
+            child: inner,
+          )
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(radius),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: inner,
+            ),
+          );
+
+    return _Pressable(enabled: onTap != null, child: card);
+  }
+}
+
+/// Scaffold с градиентным фоном и прозрачным AppBar.
+class GlassScaffold extends StatelessWidget {
+  final String title;
+  final Widget body;
+  final List<Widget>? actions;
+  final Widget? floatingActionButton;
+  final Widget? bottomNavigationBar;
+  final bool showBack;
+
+  const GlassScaffold({
+    super.key,
+    required this.title,
+    required this.body,
+    this.actions,
+    this.floatingActionButton,
+    this.bottomNavigationBar,
+    this.showBack = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GradientBackground(
+      child: Scaffold(
+        extendBody: bottomNavigationBar != null,
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Text(title),
+          automaticallyImplyLeading: showBack,
+          actions: actions,
+        ),
+        floatingActionButton: floatingActionButton,
+        bottomNavigationBar: bottomNavigationBar,
+        body: SafeArea(
+          top: false,
+          bottom: bottomNavigationBar == null,
+          child: body,
+        ),
+      ),
+    );
+  }
+}
+
+/// Объёмная кнопка на всю ширину: чистый цвет, мягкая тень и верхний блик.
+class BigButton extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final Color color;
+  final VoidCallback? onPressed;
+
+  const BigButton({
+    super.key,
+    required this.label,
+    required this.color,
+    required this.onPressed,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final base = enabled ? color : Colors.grey.shade400;
+    final bottom = Color.lerp(base, Colors.black, 0.07)!;
+    return _Pressable(
+      enabled: enabled,
+      child: Container(
+        width: double.infinity,
+        height: 56,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [base, bottom],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.38), width: 1),
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: base.withValues(alpha: 0.32),
+                    blurRadius: 22,
+                    offset: const Offset(0, 10),
+                  ),
+                  BoxShadow(
+                    color: const Color(0xFF075985).withValues(alpha: 0.14),
+                    blurRadius: 4,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : const [],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(18),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 22,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(18)),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withValues(alpha: 0.24),
+                          Colors.white.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (icon != null) ...[
+                        Icon(icon, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+===== web\index.html =====
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Дельник — подработка рядом">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Дельник">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Дельник</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Блокируем «резиновую» прокрутку и перехват свайпа во
+       встроенном браузере Telegram на iPhone: саму страницу двигать
+       нельзя, скроллит только само приложение (Flutter). */
+    html, body {
+      height: 100%;
+      overscroll-behavior: none;
+    }
+    body {
+      margin: 0;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      overflow: hidden;
+      background: #F4F6F8;
+      font-family: sans-serif;
+    }
+    #loading {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+    }
+    .badge {
+      width: 72px; height: 72px; border-radius: 20px; background: #1E88E5;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 40px;
+    }
+    .spinner {
+      width: 28px; height: 28px; border: 3px solid #cfd8e3;
+      border-top-color: #1E88E5; border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+
+  <script src="flutter_bootstrap.js" async></script>
+</head>
+<body>
+  <div id="loading">
+    <div class="badge">?</div>
+    <div class="spinner"></div>
+    <div style="color:#607089">Загрузка…</div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('loading');
+      if (el) el.remove();
+    });
+    // Если Flutter не отдал первый кадр за 25 секунд (медленная сеть,
+    // недоступный сервер, битый кэш) — показываем ошибку и кнопку
+    // вместо бесконечного спиннера.
+    setTimeout(function () {
+      var el = document.getElementById('loading');
+      if (!el) return;
+      el.innerHTML =
+        '<div class="badge">?</div>' +
+        '<div style="font-size:17px;font-weight:700;color:#1f2937">Не удалось загрузить приложение</div>' +
+        '<div style="color:#607089;text-align:center;max-width:280px">Проверьте интернет и попробуйте ещё раз.</div>' +
+        '<button onclick="location.reload()" style="margin-top:8px;padding:12px 28px;font-size:15px;border:0;border-radius:12px;background:#1E88E5;color:#fff;cursor:pointer">Повторить</button>';
+    }, 25000);
+  </script>
+</body>
+</html>
+
+
+===== pubspec.yaml =====
+name: shabashka_app
+description: "Дельник — подработка рядом"
+publish_to: 'none'
+version: 1.0.9+9
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.5+1
+  font_awesome_flutter: ^10.7.0
+  shared_preferences: ^2.2.2
+  http: ^1.2.0
+  flutter_map: ^6.2.1
+  latlong2: ^0.9.1
+  supabase_flutter: ^2.5.0
+  geolocator: ^13.0.0
+  image_picker: ^1.1.2
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+  flutter_rustore_push: ^7.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/legal/
+    - assets/onboarding/
+  fonts:
+    - family: NotoSans
+      fonts:
+        - asset: assets/fonts/NotoSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSans-Bold.ttf
+          weight: 700
+
+
