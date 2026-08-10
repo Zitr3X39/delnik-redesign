@@ -13,6 +13,9 @@ import 'screens/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_state.dart';
 import 'services/push_service.dart';
+import 'ui_v2/theme/app_theme_v2.dart';
+import 'ui_v2/screens/home_feed_connector.dart';
+import 'ui_v2/ui_v2_flag.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +46,8 @@ Future<void> _bootApp(bool supabaseReady) async {
   try {
     final prefs = await SharedPreferences.getInstance();
     onboardingDone = prefs.getBool('onboarding_done_v1') ?? false;
+    // Переключатель старый/новый UI (ветка redesign/ui-v2).
+    UiV2Flag.init(prefs);
   } catch (_) {}
   AppState.onboardingDone = onboardingDone;
   if (!supabaseReady) {
@@ -191,50 +196,64 @@ class _ShabashkaAppState extends State<ShabashkaApp>
     if (requestedJobRoute != null && (!onboardingDone || !loggedIn)) {
       JobProvider.pendingJobId = requestedJobRoute.substring('/job/'.length);
     }
-    return MaterialApp(
-      scaffoldMessengerKey: JobProvider.messengerKey,
-      navigatorKey: JobProvider.navigatorKey,
-      title: 'Дельник',
-      debugShowCheckedModeBanner: false,
-      scrollBehavior: _NoGlowScrollBehavior(),
-      // На телефоне в браузере системный масштаб шрифта раздувал интерфейс
-      // (выглядело как 125%). Фиксируем масштаб на 100%.
-      builder: (context, child) {
-        final mq = MediaQuery.of(context);
-        return MediaQuery(
-          data: mq.copyWith(
-            textScaler: mq.textScaler.clamp(maxScaleFactor: 1.0),
-          ),
-          child: KeyedSubtree(
-            key: ValueKey(_resumeTick),
-            child: child ?? const SizedBox.shrink(),
-          ),
-        );
-      },
-      theme: AppTheme.lightTheme,
-      initialRoute: (!loggedIn && !onboardingDone)
-          ? '/onboarding'
-          : (loggedIn ? (requestedJobRoute ?? '/home') : '/auth'),
-      routes: {
-        '/onboarding': (_) => const OnboardingScreen(),
-        '/auth': (_) => const AuthScreen(),
-        '/home': (_) => _guard(const HomeScreen()),
-      },
-      onGenerateRoute: (settings) {
-        final name = settings.name ?? '';
-        if (name.startsWith('/job/')) {
-          final jobId = name.substring('/job/'.length);
-          if (jobId.isNotEmpty) {
-            if (!_isLoggedIn()) {
-              JobProvider.pendingJobId = jobId;
-            }
-            return MaterialPageRoute(
-              settings: settings,
-              builder: (_) => _guard(JobDetailScreen(jobId: jobId)),
+    // Переключение дизайна v1/v2 пересобирает MaterialApp целиком
+    // (ключ по флагу — навигатор монтируется заново, стек сбрасывается
+    // на initialRoute; для dev-переключателя это приемлемо).
+    return ValueListenableBuilder<bool>(
+      valueListenable: UiV2Flag.enabled,
+      builder: (context, v2, _) {
+        return MaterialApp(
+          key: ValueKey('delnik_app_v2_$v2'),
+          scaffoldMessengerKey: JobProvider.messengerKey,
+          navigatorKey: JobProvider.navigatorKey,
+          title: 'Дельник',
+          debugShowCheckedModeBanner: false,
+          scrollBehavior: _NoGlowScrollBehavior(),
+          builder: (context, child) {
+            final mq = MediaQuery.of(context);
+            return MediaQuery(
+              data: mq.copyWith(
+                // Старый UI: исторический кап масштаба шрифта (мобильный
+                // браузер раздувал вёрстку). Новый UI: кап снят —
+                // масштаб уважаем, вёрстку чиним констрейнтами.
+                textScaler: v2
+                    ? mq.textScaler
+                    : mq.textScaler.clamp(maxScaleFactor: 1.0),
+              ),
+              child: KeyedSubtree(
+                key: ValueKey(_resumeTick),
+                child: child ?? const SizedBox.shrink(),
+              ),
             );
-          }
-        }
-        return null;
+          },
+          theme: v2 ? buildLightThemeV2() : AppTheme.lightTheme,
+          darkTheme: v2 ? buildDarkThemeV2() : null,
+          initialRoute: (!loggedIn && !onboardingDone)
+              ? '/onboarding'
+              : (loggedIn ? (requestedJobRoute ?? '/home') : '/auth'),
+          routes: {
+            '/onboarding': (_) => const OnboardingScreen(),
+            '/auth': (_) => const AuthScreen(),
+            '/home': (_) => _guard(
+                v2 ? const HomeFeedConnectorV2() : const HomeScreen()),
+          },
+          onGenerateRoute: (settings) {
+            final name = settings.name ?? '';
+            if (name.startsWith('/job/')) {
+              final jobId = name.substring('/job/'.length);
+              if (jobId.isNotEmpty) {
+                if (!_isLoggedIn()) {
+                  JobProvider.pendingJobId = jobId;
+                }
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => _guard(JobDetailScreen(jobId: jobId)),
+                );
+              }
+            }
+            return null;
+          },
+        );
       },
     );
   }

@@ -1,0 +1,17 @@
+{
+  "name": "Delnik Flutter (web preview)",
+  "image": "ghcr.io/cirruslabs/flutter:stable",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Дельник — веб",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "postCreateCommand": "flutter pub get",
+  "customizations": {
+    "vscode": {
+      "extensions": ["Dart-Code.flutter"]
+    }
+  }
+}

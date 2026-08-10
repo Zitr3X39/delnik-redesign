@@ -8,6 +8,7 @@ import '../widgets/glass.dart';
 import '../widgets/job_card.dart';
 import '../utils/categories.dart';
 import '../widgets/city_picker.dart';
+import '../ui_v2/ui_v2_flag.dart';
 import 'create_job_screen.dart';
 import 'job_detail_screen.dart';
 import 'map_screen.dart';
@@ -155,6 +156,12 @@ class _HomeScreenState extends State<HomeScreen> {
           title: 'Дельник',
           showBack: false,
           actions: [
+            // Переключение на новый дизайн (ветка redesign/ui-v2).
+            IconButton(
+              tooltip: 'Новый дизайн (beta)',
+              icon: const Icon(Icons.auto_awesome_rounded),
+              onPressed: () => UiV2Flag.setEnabled(true),
+            ),
             PopupMenuButton<JobListType>(
               icon: const Icon(Icons.menu_rounded),
               tooltip: 'Меню',
@@ -789,12 +796,12 @@ class _SortChip extends StatelessWidget {
           ),
           boxShadow: selected
               ? [
-                  BoxShadow(
-                    color: const Color(0xFF0284C7).withValues(alpha: 0.10),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
+                    BoxShadow(
+                      color: const Color(0xFF0284C7).withValues(alpha: 0.10),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
               : null,
         ),
         child: Row(
