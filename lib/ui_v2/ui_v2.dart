@@ -4,6 +4,10 @@
 /// `lib/screens`) живёт параллельно до влития. Спека: docs/redesign/DESIGN.md.
 library;
 
-export 'theme/tokens.dart';
+export 'adapters/job_card_adapter.dart';
+export 'screens/home_feed_screen_v2.dart';
 export 'theme/app_theme_v2.dart';
+export 'theme/tokens.dart';
+export 'widgets/category_chips.dart';
+export 'widgets/feed_search_bar.dart';
 export 'widgets/job_card_v2.dart';
