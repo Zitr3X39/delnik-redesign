@@ -8,8 +8,8 @@ import '../widgets/feed_search_bar.dart';
 /// Лента заявок v2.
 ///
 /// Экран — чистый UI: получает готовые карточки и колбэки, не знает
-/// про провайдеры и Supabase. Подключение к данным — отдельный шаг
-/// (адаптер `Job -> JobCardV2` уже лежит в `adapters/`).
+/// про провайдеры и Supabase. Подключение к данным — через коннектор
+/// (`home_feed_connector.dart`), адаптер `Job -> JobCardV2` в `adapters/`.
 class HomeFeedScreenV2 extends StatelessWidget {
   const HomeFeedScreenV2({
     super.key,
@@ -20,8 +20,10 @@ class HomeFeedScreenV2 extends StatelessWidget {
     this.onCategorySelected,
     this.onSearchTap,
     this.onCityTap,
+    this.onLogoLongPress,
     this.onRefresh,
     this.isLoading = false,
+    this.floatingActionButton,
   });
 
   /// Готовые карточки (обычно `JobCardV2` через адаптер).
@@ -33,8 +35,13 @@ class HomeFeedScreenV2 extends StatelessWidget {
   final ValueChanged<String?>? onCategorySelected;
   final VoidCallback? onSearchTap;
   final VoidCallback? onCityTap;
+
+  /// Долгое нажатие на лого-слово (переключение дизайна в коннекторе).
+  final VoidCallback? onLogoLongPress;
+
   final Future<void> Function()? onRefresh;
   final bool isLoading;
+  final Widget? floatingActionButton;
 
   @override
   Widget build(BuildContext context) {
@@ -52,15 +59,20 @@ class HomeFeedScreenV2 extends StatelessWidget {
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: 'дельник', style: t.headlineMedium),
-                      TextSpan(
-                        text: '.',
-                        style: t.headlineMedium?.copyWith(color: c.accent),
-                      ),
-                    ],
+                child: GestureDetector(
+                  onLongPress: onLogoLongPress,
+                  behavior: HitTestBehavior.opaque,
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: 'дельник', style: t.headlineMedium),
+                        TextSpan(
+                          text: '.',
+                          style:
+                              t.headlineMedium?.copyWith(color: c.accent),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -112,6 +124,7 @@ class HomeFeedScreenV2 extends StatelessWidget {
             ? RefreshIndicator(onRefresh: onRefresh!, child: list)
             : list,
       ),
+      floatingActionButton: floatingActionButton,
     );
   }
 }
