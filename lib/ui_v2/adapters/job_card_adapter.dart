@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../models/job.dart';
 import '../../utils/categories.dart';
 import '../../utils/format.dart';

@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 /// Дизайн-токены «Дельник v2».
 ///
 /// База — как у Авито: нейтральный фон, белые карточки, плотные списки.
@@ -8,6 +6,8 @@ import 'package:flutter/material.dart';
 ///
 /// Спека: docs/redesign/DESIGN.md.
 library;
+
+import 'package:flutter/material.dart';
 
 /// Примитивы палитры. В компонентах напрямую не используются —
 /// только через [AppColorsExt].

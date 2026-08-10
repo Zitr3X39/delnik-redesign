@@ -1,16 +1,17 @@
-import 'dart:ui' show FontFeature;
-
-import 'package:flutter/material.dart';
-
-import 'tokens.dart';
-
 /// Тема «Дельник v2». Собирается целиком из токенов (tokens.dart).
 ///
 /// Важно: `textScaler` здесь НЕ зажимается — масштаб шрифта системы
 /// уважаем, вёрстку чиним констрейнтами, а не капом шрифта.
 library;
 
-ThemeData buildLightThemeV2() => _buildTheme(AppColorsExt.light, Brightness.light);
+import 'dart:ui' show FontFeature;
+
+import 'package:flutter/material.dart';
+
+import 'tokens.dart';
+
+ThemeData buildLightThemeV2() =>
+    _buildTheme(AppColorsExt.light, Brightness.light);
 
 ThemeData buildDarkThemeV2() => _buildTheme(AppColorsExt.dark, Brightness.dark);
 
