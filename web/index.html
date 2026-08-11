@@ -1,384 +1,83 @@
-<!doctype html>
-<html lang="ru">
+<!DOCTYPE html>
+<html>
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Дельник — карта прототипа</title>
-<style>
-:root{
-  --brand:#f26522; --brand-strong:#c8461a; --brand-soft:#fff1e8; --brand-line:#f6c4a8;
-  --ink:#14171a; --ink-2:#3f474e; --ink-3:#63696f;
-  --line:#e2e6ea; --line-2:#eef1f4; --bg:#f3f5f7; --surface:#fff;
-  --ok:#1c7f52; --ok-soft:#e7f4ed;
-  --warn-soft:#fff6e3; --warn-ink:#8a5a06;
-  --bad:#b3261e; --bad-soft:#fdecea;
-  --sh-1:0 1px 2px rgba(20,23,26,.05);
-  --sh-2:0 1px 2px rgba(20,23,26,.05), 0 6px 18px rgba(20,23,26,.07);
-}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);
-  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-::selection{background:#ffd9c4;color:#3a1a08}
-*::-webkit-scrollbar{width:12px;height:12px}
-*::-webkit-scrollbar-track{background:transparent}
-*::-webkit-scrollbar-thumb{background:#c9d0d6;border:3px solid var(--bg);border-radius:8px}
-*::-webkit-scrollbar-thumb:hover{background:#aeb7bf}
-button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer}
-a{color:inherit}
-:focus-visible,.is-focus{outline:2px solid var(--brand-strong);outline-offset:2px;border-radius:8px}
-@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
-.sprite{position:absolute;width:0;height:0;overflow:hidden}
-.ic{width:18px;height:18px;flex:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;fill:none}
-.ic-sm{width:15px;height:15px}
-.ic-lg{width:22px;height:22px}
-.wrap{max-width:1360px;margin:0 auto;padding:0 24px}
-.tnum{font-variant-numeric:tabular-nums}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  <base href="$FLUTTER_BASE_HREF">
 
-/* ---------- header ---------- */
-.hdr{background:var(--surface);border-bottom:1px solid var(--line)}
-.hdr-in{display:flex;align-items:center;gap:16px;height:70px}
-.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.015em;text-decoration:none;white-space:nowrap}
-.logo-mark{width:32px;height:32px;border-radius:10px;background:var(--brand);display:grid;place-items:center;color:#fff}
-.allcat{display:flex;align-items:center;gap:9px;height:46px;padding:0 16px;border:1px solid var(--line);background:#fff;border-radius:10px;font-size:15px;font-weight:600;color:var(--ink-2);white-space:nowrap}
-.searchbar{flex:1;display:flex;min-width:0;height:46px}
-.searchbar .q{flex:1;min-width:0;height:46px;border:1px solid var(--line);border-right:0;border-radius:10px 0 0 10px;padding:0 14px;font-size:15px;background:#fff}
-.searchbar .q::placeholder{color:var(--ink-3)}
-.searchbar .geo{display:flex;align-items:center;gap:8px;height:46px;padding:0 14px;border:1px solid var(--line);border-right:0;border-left:1px solid var(--line-2);background:#fff;color:var(--ink-2);font-size:15px;white-space:nowrap}
-.searchbar .go{height:46px;padding:0 24px;border:0;border-radius:0 10px 10px 0;background:var(--brand-strong);color:#fff;font-weight:650;display:flex;align-items:center;gap:8px}
-.hdr-acts{display:flex;align-items:center;gap:6px}
-.iconbtn{width:46px;height:46px;border-radius:10px;border:0;background:transparent;color:var(--ink-2);display:grid;place-items:center;position:relative;text-decoration:none}
-.iconbtn:hover,.iconbtn.is-hover{background:var(--line-2)}
-.dot-n{position:absolute;top:9px;right:9px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--brand-strong);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;border:2px solid #fff}
-.me{display:flex;align-items:center;gap:9px;padding:0 8px 0 6px;height:46px;border-radius:10px;border:0;background:transparent;text-decoration:none}
-.me:hover,.me.is-hover{background:var(--line-2)}
-.ava{width:32px;height:32px;border-radius:50%;background:#dfe4e9;color:var(--ink-2);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none}
-.me span{font-size:14.5px;color:var(--ink-2);white-space:nowrap}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Дельник — подработка рядом">
 
-/* ---------- category nav ---------- */
-.catnav{background:var(--surface);border-bottom:1px solid var(--line)}
-.catnav-in{display:flex;align-items:center;gap:22px;height:48px;overflow:hidden}
-.catnav a{font-size:14.5px;color:var(--ink-2);text-decoration:none;white-space:nowrap;font-weight:500}
-.catnav a:hover,.catnav a.is-hover{color:var(--brand-strong)}
-.catnav a.on{color:var(--ink);font-weight:650}
-.catnav .grow{flex:1}
-.catnav .muted{font-size:14px;color:var(--ink-3);white-space:nowrap}
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Дельник">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-/* ---------- crumbs + page head ---------- */
-.crumbs{display:flex;align-items:center;gap:8px;padding:16px 0 10px;font-size:13.5px;color:var(--ink-3)}
-.crumbs a{text-decoration:none;color:var(--ink-3)}
-.crumbs a:hover{color:var(--brand-strong)}
-.crumbs .sep{color:#b8c0c7}
-.phead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:16px}
-.phead h1{margin:0;font-size:27px;letter-spacing:-.028em;line-height:1.2}
-.phead .cnt{color:var(--ink-3);font-size:14.5px}
-.phead .sortsel{margin-left:auto;display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:14.5px;color:var(--ink-2);white-space:nowrap}
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
 
-/* ---------- layout ---------- */
-.cols{display:flex;gap:24px;align-items:flex-start;padding-bottom:48px}
-.side{width:266px;flex:none}
-.main{flex:1;min-width:0}
+  <title>Дельник</title>
+  <link rel="manifest" href="manifest.json">
 
-/* ---------- buttons ---------- */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 20px;border-radius:10px;border:1px solid transparent;font-size:15px;font-weight:650;white-space:nowrap;text-decoration:none;transition:background .12s ease,border-color .12s ease}
-.btn-primary{background:var(--brand-strong);color:#fff}
-.btn-primary:hover,.btn-primary.is-hover{background:#ab3a14}
-.btn-outline{background:var(--brand-soft);border-color:var(--brand-line);color:var(--brand-strong)}
-.btn-outline:hover,.btn-outline.is-hover{background:#ffe6d5}
-.btn-quiet{background:#fff;border-color:var(--line);color:var(--ink-2)}
-.btn-quiet:hover,.btn-quiet.is-hover{border-color:#c9d2d9;background:#fbfcfd}
-.btn-icon{width:44px;padding:0}
-.btn-sm{height:38px;padding:0 15px;font-size:14.5px;border-radius:9px}
-.btn-lg{height:50px;padding:0 26px;font-size:16px}
-.btn[disabled],.btn.is-disabled{background:var(--line-2);border-color:transparent;color:#7c858d;cursor:not-allowed}
-.btn.is-loading{color:transparent;position:relative}
-.btn.is-loading::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.45);border-top-color:#fff}
+  <style>
+    /* Блокируем «резиновую» прокрутку и перехват свайпа во
+       встроенном браузере Telegram на iPhone: саму страницу двигать
+       нельзя, скроллит только само приложение (Flutter). */
+    html, body {
+      height: 100%;
+      overscroll-behavior: none;
+    }
+    body {
+      margin: 0;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      overflow: hidden;
+      background: #F4F6F8;
+      font-family: sans-serif;
+    }
+    #loading {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+    }
+    .badge {
+      width: 72px; height: 72px; border-radius: 20px; background: #1E88E5;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 40px;
+    }
+    .spinner {
+      width: 28px; height: 28px; border: 3px solid #cfd8e3;
+      border-top-color: #1E88E5; border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 
-/* ---------- chips / badges ---------- */
-.chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink-2);font-size:14.5px;font-weight:550;white-space:nowrap}
-.chip .n{font-size:13px;color:var(--ink-3)}
-.chip:hover,.chip.is-hover{border-color:#c9d2d9}
-.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
-.chip.on .n{color:#c3cbd2}
-.chip.on .ic{color:#fff}
-.tag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:4px 9px;border-radius:6px;background:var(--brand-soft);color:var(--brand-strong);white-space:nowrap}
-.tag.warn{background:var(--warn-soft);color:var(--warn-ink)}
-.tag.neutral{background:var(--line-2);color:var(--ink-2)}
-.badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:6px 10px;border-radius:8px;background:var(--line-2);color:var(--ink-2);white-space:nowrap}
-.badge.ok{background:var(--ok-soft);color:#155f3d}
-.badge .ic{width:15px;height:15px}
-
-/* ---------- surfaces ---------- */
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px}
-.panel-p{padding:18px}
-.panel h3{margin:0 0 14px;font-size:15.5px;letter-spacing:-.012em}
-.hr{height:1px;background:var(--line-2);border:0;margin:16px 0}
-
-/* ---------- filters ---------- */
-.fgroup{padding:14px 0;border-top:1px solid var(--line-2)}
-.fgroup:first-of-type{border-top:0;padding-top:0}
-.flabel{font-size:12.5px;font-weight:700;color:var(--ink-3);letter-spacing:.03em;margin-bottom:10px}
-.pill-row{display:flex;flex-wrap:wrap;gap:6px}
-.pill{padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-size:13.8px;color:var(--ink-2);background:#fff}
-.pill:hover,.pill.is-hover{border-color:#c9d2d9}
-.pill.on{border-color:var(--brand-line);background:var(--brand-soft);color:var(--brand-strong);font-weight:650}
-.check{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14.5px;color:var(--ink-2)}
-.box{width:19px;height:19px;border:1.5px solid #c3cad1;border-radius:5px;flex:none;display:grid;place-items:center;background:#fff;color:transparent}
-.box.on{background:var(--brand-strong);border-color:var(--brand-strong);color:#fff}
-.count{margin-left:auto;font-size:13px;color:var(--ink-3)}
-.money{display:flex;gap:8px}
-.money input{width:100%;height:40px;border:1px solid var(--line);border-radius:9px;padding:0 11px;font-size:14.5px}
-.rng{width:100%;margin-top:12px;accent-color:var(--brand-strong)}
-
-/* ---------- skeleton / empty / alert ---------- */
-.sk{background:linear-gradient(90deg,#e9edf1 0%,#f2f5f7 50%,#e9edf1 100%);border-radius:7px}
-.sk-line{height:13px}
-.empty{text-align:center;padding:52px 24px}
-.empty .glyph{width:56px;height:56px;border-radius:16px;background:var(--brand-soft);color:var(--brand-strong);display:grid;place-items:center;margin:0 auto 16px}
-.empty h3{margin:0 0 8px;font-size:19px;letter-spacing:-.02em}
-.empty p{margin:0 auto 20px;max-width:420px;color:var(--ink-3);font-size:15px}
-.alert{display:flex;gap:12px;padding:16px;border-radius:12px;background:var(--bad-soft);border:1px solid #f3c9c5}
-.alert .ic{color:var(--bad);margin-top:2px}
-.alert b{display:block;font-size:15px;margin-bottom:3px}
-.alert p{margin:0 0 12px;font-size:14.5px;color:var(--ink-2)}
-
-/* ---------- pagination ---------- */
-.pager{display:flex;gap:6px;justify-content:center;margin-top:26px}
-.pg{min-width:44px;height:44px;padding:0 13px;border:1px solid var(--line);background:#fff;border-radius:10px;display:grid;place-items:center;font-size:14.5px;color:var(--ink-2)}
-.pg:hover,.pg.is-hover{border-color:#c9d2d9}
-.pg.on{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:650}
-
-/* ---------- footer ---------- */
-.foot{border-top:1px solid var(--line);background:var(--surface);padding:22px 0;color:var(--ink-3);font-size:13.5px}
-.foot-in{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
-.foot a{text-decoration:none}
-.foot a:hover{color:var(--brand-strong)}
-.foot .grow{flex:1}
-
-.side .panel{position:sticky;top:20px}
-.qbar{margin-bottom:20px}
-.striphead{display:flex;align-items:center;gap:10px;margin:0 0 12px}
-.striphead h2{margin:0;font-size:17.5px;letter-spacing:-.018em;white-space:nowrap}
-.striphead .dot{width:8px;height:8px;border-radius:50%;background:var(--brand);flex:none}
-.striphead .n{color:var(--ink-3);font-size:14px;white-space:nowrap}
-.striphead .more{margin-left:auto;font-size:14.5px;color:var(--brand-strong);text-decoration:none;display:flex;align-items:center;gap:6px;white-space:nowrap}
-.ncards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:30px}
-.ncard{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:15px;display:flex;flex-direction:column;gap:10px;min-width:0}
-.ncard .starts{display:inline-flex;align-items:center;gap:7px;font-size:12.8px;font-weight:700;color:var(--brand-strong);background:var(--brand-soft);border-radius:7px;padding:5px 9px;align-self:flex-start;white-space:nowrap}
-.ncard h3{margin:0;font-size:15.5px;line-height:1.3;letter-spacing:-.014em}
-.ncard .p{font-size:19px;font-weight:800;letter-spacing:-.024em}
-.ncard .p em{font-style:normal;font-size:13px;font-weight:500;color:var(--ink-3);margin-left:7px}
-.ncard .m{display:flex;gap:14px;flex-wrap:wrap;color:var(--ink-3);font-size:13.4px}
-.ncard .m span{display:flex;align-items:center;gap:6px;white-space:nowrap}
-.list{display:flex;flex-direction:column;gap:12px}
-.row{display:flex;gap:24px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;transition:border-color .12s ease,box-shadow .12s ease}
-.row:hover,.row.is-hover{border-color:#cdd5db;box-shadow:var(--sh-2)}
-.rmain{flex:1;min-width:0}
-.rtop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:7px}
-.rtop h2{margin:0;font-size:18.5px;line-height:1.28;letter-spacing:-.02em}
-.rtop h2 a{text-decoration:none}
-.row:hover .rtop h2 a,.row.is-hover .rtop h2 a{text-decoration:underline;text-underline-offset:3px}
-.price{display:flex;align-items:baseline;gap:10px;margin-bottom:9px}
-.price b{font-size:24px;font-weight:800;letter-spacing:-.03em}
-.price span{font-size:14px;color:var(--ink-3)}
-.desc{margin:0 0 12px;color:var(--ink-2);font-size:15px}
-.meta{display:flex;flex-wrap:wrap;gap:8px 16px;color:var(--ink-3);font-size:14px;margin-bottom:12px}
-.meta span{display:flex;align-items:center;gap:6px;white-space:nowrap}
-.trust{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px}
-.author{display:flex;align-items:center;gap:10px;min-width:0}
-.author .ava{width:30px;height:30px;font-size:12px}
-.author b{font-size:14.2px;font-weight:600;display:block}
-.author em{font-style:normal;font-size:13.2px;color:var(--ink-3)}
-.rside{width:214px;flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:16px}
-.posted{font-size:13.4px;color:var(--ink-3);white-space:nowrap}
-.rfoot{text-align:right}
-.replies{font-size:13.4px;color:var(--ink-3);white-space:nowrap;display:block;margin-bottom:9px}
-.racts{display:flex;gap:8px}
-.stwrap{padding:24px 0 48px}
-.stsec{margin-bottom:34px}
-.stlab{font-size:12.5px;font-weight:700;color:var(--ink-3);letter-spacing:.05em;margin-bottom:12px}
-.strow{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.stnote{font-size:13.5px;color:var(--ink-3);margin:8px 0 0}
-.skrow{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;gap:24px;margin-bottom:12px}
-.skmain{flex:1;min-width:0}
-.skside{width:214px;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
-
-.acols{display:flex;gap:24px;align-items:flex-start;padding:20px 0 48px}
-.amenu{width:250px;flex:none;position:sticky;top:20px}
-.amenu .panel{padding:8px}
-.amenu a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;text-decoration:none;font-size:14.8px;color:var(--ink-2);font-weight:550}
-.amenu a:hover{background:var(--line-2)}
-.amenu a.on{background:var(--brand-soft);color:var(--brand-strong);font-weight:700}
-.amenu a .c{margin-left:auto;font-size:13px;color:var(--ink-3)}
-.amenu a.on .c{color:var(--brand-strong)}
-.amenu .msep{height:1px;background:var(--line-2);margin:8px 12px}
-.amain{flex:1;min-width:0}
-.ahead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:16px}
-.ahead h1{margin:0;font-size:26px;letter-spacing:-.028em;line-height:1.2}
-.ahead .cnt{color:var(--ink-3);font-size:14.5px}
-.ahead .grow{flex:1}
-.tabs{display:flex;gap:26px;border-bottom:1px solid var(--line);margin-bottom:18px}
-.tabs a{padding:0 0 13px;font-size:15px;color:var(--ink-3);text-decoration:none;display:flex;align-items:center;gap:7px;white-space:nowrap}
-.tabs a:hover{color:var(--ink-2)}
-.tabs a.on{color:var(--ink);font-weight:650;box-shadow:inset 0 -2px 0 var(--brand)}
-.tabs .n{font-size:13px;color:var(--ink-3)}
-.arow{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:12px;display:flex;gap:20px}
-.arow .am{flex:1;min-width:0}
-.arow h2{margin:0 0 8px;font-size:17.5px;letter-spacing:-.018em;line-height:1.3}
-.arow h2 a{text-decoration:none}
-.arow h2 a:hover{text-decoration:underline;text-underline-offset:3px}
-.arow .sum{font-size:20px;font-weight:800;letter-spacing:-.026em;margin-bottom:9px}
-.arow .sum em{font-style:normal;font-size:13.4px;font-weight:500;color:var(--ink-3);margin-left:8px}
-.aside2{width:224px;flex:none;display:flex;flex-direction:column;align-items:stretch;gap:9px}
-.aside2 .btn{width:100%}
-.aside2 .top{display:flex;justify-content:flex-end;margin-bottom:2px}
-.status{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;padding:5px 10px;border-radius:7px;white-space:nowrap}
-.status.wait{background:var(--line-2);color:var(--ink-2)}
-.status.new{background:var(--brand-soft);color:var(--brand-strong)}
-.status.ok{background:var(--ok-soft);color:#155f3d}
-.status.off{background:var(--bad-soft);color:#8d2a22}
-.next{font-size:13.6px;color:var(--ink-3);margin-top:11px;display:flex;align-items:center;gap:7px}
-.apps{margin-top:15px;border-top:1px solid var(--line-2);padding-top:4px}
-.app{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-2)}
-.app:last-child{border-bottom:0}
-.app .ava{width:36px;height:36px;font-size:13px}
-.app .nm{font-size:14.8px;font-weight:600}
-.app .sub{font-size:13.2px;color:var(--ink-3);margin-top:3px;display:flex;gap:12px;flex-wrap:wrap}
-.app .sub span{display:flex;align-items:center;gap:5px}
-.app .acts{margin-left:auto;display:flex;gap:8px;flex:none}
-.chatwrap{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;height:588px}
-.dlgs{width:330px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
-.dlgs .srch{padding:13px;border-bottom:1px solid var(--line-2)}
-.dlgs .srch input{width:100%;height:40px;border:1px solid var(--line);border-radius:9px;padding:0 12px;font-size:14.5px;background:#fff}
-.dlist{overflow:auto;flex:1}
-.di{display:flex;gap:11px;padding:13px 14px;border-bottom:1px solid var(--line-2);min-width:0}
-.di.on{background:#f6f8fa}
-.di .ava{width:40px;height:40px;font-size:14px}
-.di .t{flex:1;min-width:0}
-.di .nm{font-size:14.6px;font-weight:650;display:flex;align-items:center;gap:8px}
-.di .last{font-size:13.4px;color:var(--ink-3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.di .tm{font-size:12.4px;color:var(--ink-3);white-space:nowrap}
-.unread{width:8px;height:8px;border-radius:50%;background:var(--brand);flex:none}
-.conv{flex:1;display:flex;flex-direction:column;min-width:0}
-.convh{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line-2)}
-.convh .grow{flex:1;min-width:0}
-.convh .ava{width:40px;height:40px;font-size:14px}
-.convh b{font-size:15.5px;display:block}
-.convh .st{font-size:13.2px;color:var(--ink-3);margin-top:2px}
-.jobstrip{display:flex;align-items:center;gap:14px;padding:12px 18px;background:#f6f8fa;border-bottom:1px solid var(--line-2);font-size:14px;color:var(--ink-2)}
-.jobstrip b{font-weight:650;color:var(--ink)}
-.jobstrip .grow{flex:1}
-.msgs{flex:1;overflow:auto;padding:20px 18px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
-.day{align-self:center;font-size:12.6px;color:var(--ink-3);background:#e8ecf0;padding:4px 12px;border-radius:20px}
-.sys{align-self:center;text-align:center;font-size:13.6px;color:#155f3d;background:var(--ok-soft);padding:10px 15px;border-radius:11px;max-width:470px;line-height:1.45}
-.msg{max-width:66%;padding:11px 14px;border-radius:14px;font-size:14.8px;line-height:1.5}
-.msg .tm{font-size:11.8px;color:var(--ink-3);margin-top:5px;text-align:right}
-.msg.you{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:5px}
-.msg.mine{align-self:flex-end;background:var(--brand-soft);border:1px solid var(--brand-line);border-bottom-right-radius:5px}
-.compose{display:flex;gap:10px;padding:13px 18px;border-top:1px solid var(--line-2);background:#fff}
-.compose input{flex:1;height:44px;border:1px solid var(--line);border-radius:10px;padding:0 14px;font-size:15px;background:#fff}
-.phero{display:flex;gap:20px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:14px}
-.phero .ava{width:84px;height:84px;font-size:27px}
-.phero h1{margin:0 0 6px;font-size:25px;letter-spacing:-.028em}
-.phero .sub{color:var(--ink-3);font-size:14.6px;margin-bottom:13px}
-.phero .grow{flex:1;min-width:0}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px}
-.stat{padding:16px 18px;border-left:1px solid var(--line-2)}
-.stat:first-child{border-left:0}
-.stat .v{font-size:22px;font-weight:800;letter-spacing:-.028em}
-.stat .k{font-size:13px;color:var(--ink-3);margin-top:5px}
-.rev{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:12px}
-.revh{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-.revh .ava{width:38px;height:38px;font-size:13px}
-.revh b{font-size:15px;display:block}
-.revh .dt{font-size:13px;color:var(--ink-3);margin-top:2px}
-.revh .grow{flex:1;min-width:0}
-.stars{display:flex;gap:2px}
-.stars .ic{width:15px;height:15px}
-.st-on{color:var(--brand);fill:currentColor}
-.st-off{color:#cfd6dc}
-.rev p{margin:0;font-size:15px;color:var(--ink-2);line-height:1.55}
-.rev .jl{display:inline-flex;gap:6px;align-items:center;margin-top:11px;font-size:13.6px;color:var(--ink-3);text-decoration:none}
-.rev .jl:hover{color:var(--brand-strong)}
-.prog{height:8px;border-radius:5px;background:var(--line-2);overflow:hidden;margin:12px 0 10px}
-.prog i{display:block;height:100%;background:var(--ok);width:80%}
-.todo{display:flex;flex-direction:column;gap:9px}
-.todo div{display:flex;gap:10px;font-size:14.2px;color:var(--ink-2);line-height:1.45}
-.todo .ic{flex:none;margin-top:2px}
-.todo .done{color:var(--ok)}
-.todo .wait{color:var(--ink-3)}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.card{display:block;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;text-decoration:none}
-.card:hover{border-color:#cdd5db;box-shadow:var(--sh-2)}
-.card b{display:block;font-size:16.5px;margin-bottom:6px;letter-spacing:-.016em}
-.card span{font-size:14px;color:var(--ink-3);line-height:1.5;display:block}
-.idxwrap{padding:26px 0 48px}
-.idxwrap h1{margin:0 0 6px;font-size:28px;letter-spacing:-.03em}
-.idxwrap .lead{color:var(--ink-3);font-size:15px;margin:0 0 22px}
-.idxwrap h2{font-size:14px;letter-spacing:.04em;color:var(--ink-3);margin:26px 0 12px}
-</style>
+  <script src="flutter_bootstrap.js" async></script>
 </head>
 <body>
-<svg class="sprite" aria-hidden="true" focusable="false"><defs>
-<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
-<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.2-2.9 7.5-7 9-4.1-1.5-7-4.8-7-9V6z"/><path d="m8.7 12 2.3 2.3 4.3-4.6"/></symbol>
-<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 4.2l2.3 4.7 5.2.8-3.8 3.7.9 5.2-4.6-2.4-4.6 2.4.9-5.2L4.5 9.7l5.2-.8z"/></symbol>
-<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></symbol>
-<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.6 12 20 12 20z"/></symbol>
-<symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 12.5c0 3.6-3.6 6.5-8 6.5-1 0-2-.2-2.9-.5L4.5 20l1.2-3.2C4.6 15.7 4 14.2 4 12.5 4 8.9 7.6 6 12 6s8 2.9 8 6.5z"/></symbol>
-<symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.8"/></symbol>
-<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.8 19c0-2.9 2.3-5.2 5.2-5.2s5.2 2.3 5.2 5.2M16 13.8c2.4 0 4.2 1.9 4.2 4.2"/></symbol>
-<symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3.5" y="6.5" width="17" height="12" rx="2.5"/><path d="M3.5 10h17"/><circle cx="16.5" cy="14" r="1.3"/></symbol>
-<symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.6" r="1.9"/><path d="M10 21l2.4-5.2-2-2.2.8-4.6 3.4 1.6 2.4 2.2M8.6 11.4l2.6-2.4M12.4 15.8 15 21"/></symbol>
-<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5.5 13.5H11L10.5 21 18.5 10.5H13z"/></symbol>
-<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></symbol>
-<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3.5V6M16 3.5V6"/></symbol>
-<symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.3 1.6M9.5 3h5"/></symbol>
-<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.6 4.5L19 6.5"/></symbol>
-<symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6"/></symbol>
-<symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
-<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h6"/></symbol>
-<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.2"/></symbol>
-<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.5 21 19.5H3z"/><path d="M12 10v4M12 16.8v.2"/></symbol>
-<symbol id="i-send" viewBox="0 0 24 24"><path d="M20.5 3.5 3.5 10.5l6.6 2.9 2.9 6.6z"/><path d="M10.1 13.4 20.5 3.5"/></symbol>
-<symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
-<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.8 12S6.5 6 12 6s9.2 6 9.2 6-3.7 6-9.2 6-9.2-6-9.2-6z"/><circle cx="12" cy="12" r="2.8"/></symbol>
-<symbol id="i-ruble" viewBox="0 0 24 24"><path d="M8.5 20V4.5h4.7a4.2 4.2 0 0 1 0 8.4H6.5M6.5 16.6h7"/></symbol>
-<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4.5V10h-5.5"/></symbol>
-</defs></svg>
-
-<header class="hdr"><div class="wrap hdr-in">
-  <a class="logo" href="main.html"><span class="logo-mark"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg></span>Дельник</a>
-  <button class="allcat"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg>Все категории<svg class="ic ic-sm" aria-hidden="true"><use href="#i-chev"/></svg></button>
-  <form class="searchbar" onsubmit="return false">
-    <input class="q" placeholder="Грузчик, уборка, курьер…" aria-label="Поиск заявок">
-    <span class="geo"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Калининград<svg class="ic ic-sm" aria-hidden="true"><use href="#i-chev"/></svg></span>
-    <button class="go" type="submit"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>Найти</button>
-  </form>
-  <a class="btn btn-outline" href="create.html"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Разместить заявку</a>
-  <div class="hdr-acts">
-    <button class="iconbtn" aria-label="Избранное"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-heart"/></svg><span class="dot-n">3</span></button>
-    <a class="iconbtn" href="chat.html" aria-label="Сообщения"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-chat"/></svg><span class="dot-n">2</span></a>
-    <a class="me" href="profile.html"><span class="ava">АК</span><span>Антон</span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-chev"/></svg></a>
+  <div id="loading">
+    <div class="badge">⚡</div>
+    <div class="spinner"></div>
+    <div style="color:#607089">Загрузка…</div>
   </div>
-</div></header>
-<nav class="catnav"><div class="wrap catnav-in"><a href="main.html" class="on">Все заявки</a><a href="#">Погрузка и грузчики</a><a href="#">Уборка</a><a href="#">Курьеры</a><a href="#">Стройка и ремонт</a><a href="#">Мебель</a><a href="#">Промо</a><a href="#">Склад</a><a href="#">Разное</a><span class="grow"></span><span class="muted">96 новых заявок сегодня</span></div></nav>
-<main class="wrap idxwrap"><h1>Дельник — прототип редизайна</h1><p class="lead">Десктоп, светлая тема. Одна дизайн-система на все экраны: токены, 27 иконок, один набор компонентов. Флаттер и бэкенд не затронуты.</p><h2>ПОИСК И ЗАЯВКИ</h2><div class="grid3"><a class="card" href="main.html"><b>Главная — лента заявок</b><span>Общий каталог, фильтры и блок «Начинается в ближайшие часы»</span></a><a class="card" href="detail.html"><b>Экран заявки</b><span>Условия, заказчик, гарантия оплаты и панель отклика</span></a><a class="card" href="apply.html"><b>Отклик</b><span>Форма с сообщением и экран подтверждения</span></a></div><h2>ЛИЧНЫЙ КАБИНЕТ</h2><div class="grid3"><a class="card" href="responses.html"><b>Мои отклики</b><span>Статусы откликов и вкладки: активные, приглашения, выполненные</span></a><a class="card" href="myjobs.html"><b>Мои заявки</b><span>Взгляд заказчика: отклики и выбор исполнителя</span></a><a class="card" href="chat.html"><b>Сообщения</b><span>Диалоги с контекстом заявки и статусом оплаты</span></a><a class="card" href="profile.html"><b>Профиль и отзывы</b><span>Рейтинг, статистика, отзывы и заполненность</span></a><a class="card" href="create.html"><b>Публикация заявки</b><span>Форма с живым превью карточки в ленте</span></a></div><h2>СЛУЖЕБНОЕ</h2><div class="grid3"><a class="card" href="states.html"><b>Состояния интерфейса</b><span>Наведение, фокус, загрузка, пусто, ошибка</span></a></div></main>
-<footer class="foot"><div class="wrap foot-in">
-  <span>Дельник · Подработка рядом</span>
-  <a href="#">Как это работает</a>
-  <a href="#">Безопасность сделок</a>
-  <a href="#">Поддержка</a>
-  <a href="index.html">Карта прототипа</a>
-  <span class="grow"></span>
-  <span>Калининград</span>
-</div></footer>
-
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('loading');
+      if (el) el.remove();
+    });
+    // Если Flutter не отдал первый кадр за 25 секунд (медленная сеть,
+    // недоступный сервер, битый кэш) — показываем ошибку и кнопку
+    // вместо бесконечного спиннера.
+    setTimeout(function () {
+      var el = document.getElementById('loading');
+      if (!el) return;
+      el.innerHTML =
+        '<div class="badge">⚡</div>' +
+        '<div style="font-size:17px;font-weight:700;color:#1f2937">Не удалось загрузить приложение</div>' +
+        '<div style="color:#607089;text-align:center;max-width:280px">Проверьте интернет и попробуйте ещё раз.</div>' +
+        '<button onclick="location.reload()" style="margin-top:8px;padding:12px 28px;font-size:15px;border:0;border-radius:12px;background:#1E88E5;color:#fff;cursor:pointer">Повторить</button>';
+    }, 25000);
+  </script>
 </body>
 </html>
