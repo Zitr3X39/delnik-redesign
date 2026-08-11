@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дельник — Подработка в Калининграде</title>
+<style>
+:root{
+  --brand:#2563EB; --brand-strong:#1D4ED8; --brand-soft:#EEF4FF; --brand-line:#C6D9FE;
+  --ink:#14171a; --ink-2:#3f474e; --ink-3:#63696f;
+  --line:#e2e6ea; --line-2:#eef1f4; --bg:#f3f5f7; --surface:#fff;
+  --ok:#1c7f52; --ok-soft:#e7f4ed;
+  --warn-soft:#fff6e3; --warn-ink:#8a5a06;
+  --bad:#b3261e; --bad-soft:#fdecea;
+  --sh-1:0 1px 2px rgba(20,23,26,.05);
+  --sh-2:0 1px 2px rgba(20,23,26,.05), 0 6px 18px rgba(20,23,26,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:#ffd9c4;color:#3a1a08}
+*::-webkit-scrollbar{width:12px;height:12px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#c9d0d6;border:3px solid var(--bg);border-radius:8px}
+*::-webkit-scrollbar-thumb:hover{background:#aeb7bf}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible,.is-focus{outline:2px solid var(--brand-strong);outline-offset:2px;border-radius:8px}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+.ic{width:18px;height:18px;flex:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.ic-sm{width:15px;height:15px}
+.ic-lg{width:22px;height:22px}
+.wrap{max-width:1360px;margin:0 auto;padding:0 24px}
+.tnum{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- header ---------- */
+.hdr{background:var(--surface);border-bottom:1px solid var(--line)}
+.hdr-in{display:flex;align-items:center;gap:16px;height:70px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.015em;text-decoration:none;white-space:nowrap}
+.logo-mark{width:32px;height:32px;border-radius:10px;background:var(--brand);display:grid;place-items:center;color:#fff}
+.allcat{display:flex;align-items:center;gap:9px;height:46px;padding:0 16px;border:1px solid var(--line);background:#fff;border-radius:10px;font-size:15px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.searchbar{flex:1;display:flex;min-width:0;height:46px}
+.searchbar .q{flex:1;min-width:0;height:46px;border:1px solid var(--line);border-right:0;border-radius:10px 0 0 10px;padding:0 14px;font-size:15px;background:#fff}
+.searchbar .q::placeholder{color:var(--ink-3)}
+.searchbar .geo{display:flex;align-items:center;gap:8px;height:46px;padding:0 14px;border:1px solid var(--line);border-right:0;border-left:1px solid var(--line-2);background:#fff;color:var(--ink-2);font-size:15px;white-space:nowrap}
+.searchbar .go{height:46px;padding:0 24px;border:0;border-radius:0 10px 10px 0;background:var(--brand-strong);color:#fff;font-weight:650;display:flex;align-items:center;gap:8px}
+.hdr-acts{display:flex;align-items:center;gap:6px}
+.iconbtn{width:46px;height:46px;border-radius:10px;border:0;background:transparent;color:var(--ink-2);display:grid;place-items:center;position:relative;text-decoration:none}
+.iconbtn:hover,.iconbtn.is-hover{background:var(--line-2)}
+.dot-n{position:absolute;top:9px;right:9px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--brand-strong);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;border:2px solid #fff}
+.me{display:flex;align-items:center;gap:9px;padding:0 8px 0 6px;height:46px;border-radius:10px;border:0;background:transparent;text-decoration:none}
+.me:hover,.me.is-hover{background:var(--line-2)}
+.ava{width:32px;height:32px;border-radius:50%;background:#dfe4e9;color:var(--ink-2);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none}
+.me span{font-size:14.5px;color:var(--ink-2);white-space:nowrap}
+
+/* ---------- category nav ---------- */
+.catnav{background:var(--surface);border-bottom:1px solid var(--line)}
+.catnav-in{display:flex;align-items:center;gap:22px;height:48px;overflow:hidden}
+.catnav a{font-size:14.5px;color:var(--ink-2);text-decoration:none;white-space:nowrap;font-weight:500}
+.catnav a:hover,.catnav a.is-hover{color:var(--brand-strong)}
+.catnav a.on{color:var(--ink);font-weight:650}
+.catnav .grow{flex:1}
+.catnav .muted{font-size:14px;color:var(--ink-3);white-space:nowrap}
+
+/* ---------- crumbs + page head ---------- */
+.crumbs{display:flex;align-items:center;gap:8px;padding:16px 0 10px;font-size:13.5px;color:var(--ink-3)}
+.crumbs a{text-decoration:none;color:var(--ink-3)}
+.crumbs a:hover{color:var(--brand-strong)}
+.crumbs .sep{color:#b8c0c7}
+.phead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.phead h1{margin:0;font-size:27px;letter-spacing:-.028em;line-height:1.2}
+.phead .cnt{color:var(--ink-3);font-size:14.5px}
+.phead .sortsel{margin-left:auto;display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:14.5px;color:var(--ink-2);white-space:nowrap}
+
+/* ---------- layout ---------- */
+.cols{display:flex;gap:24px;align-items:flex-start;padding-bottom:48px}
+.side{width:266px;flex:none}
+.main{flex:1;min-width:0}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 20px;border-radius:10px;border:1px solid transparent;font-size:15px;font-weight:650;white-space:nowrap;text-decoration:none;transition:background .12s ease,border-color .12s ease}
+.btn-primary{background:var(--brand-strong);color:#fff}
+.btn-primary:hover,.btn-primary.is-hover{background:#ab3a14}
+.btn-outline{background:var(--brand-soft);border-color:var(--brand-line);color:var(--brand-strong)}
+.btn-outline:hover,.btn-outline.is-hover{background:#ffe6d5}
+.btn-quiet{background:#fff;border-color:var(--line);color:var(--ink-2)}
+.btn-quiet:hover,.btn-quiet.is-hover{border-color:#c9d2d9;background:#fbfcfd}
+.btn-icon{width:44px;padding:0}
+.btn-sm{height:38px;padding:0 15px;font-size:14.5px;border-radius:9px}
+.btn-lg{height:50px;padding:0 26px;font-size:16px}
+.btn[disabled],.btn.is-disabled{background:var(--line-2);border-color:transparent;color:#7c858d;cursor:not-allowed}
+.btn.is-loading{color:transparent;position:relative}
+.btn.is-loading::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.45);border-top-color:#fff}
+
+/* ---------- chips / badges ---------- */
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink-2);font-size:14.5px;font-weight:550;white-space:nowrap}
+.chip .n{font-size:13px;color:var(--ink-3)}
+.chip:hover,.chip.is-hover{border-color:#c9d2d9}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip.on .n{color:#c3cbd2}
+.chip.on .ic{color:#fff}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:4px 9px;border-radius:6px;background:var(--brand-soft);color:var(--brand-strong);white-space:nowrap}
+.tag.warn{background:var(--warn-soft);color:var(--warn-ink)}
+.tag.neutral{background:var(--line-2);color:var(--ink-2)}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:6px 10px;border-radius:8px;background:var(--line-2);color:var(--ink-2);white-space:nowrap}
+.badge.ok{background:var(--ok-soft);color:#155f3d}
+.badge .ic{width:15px;height:15px}
+
+/* ---------- surfaces ---------- */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.panel-p{padding:18px}
+.panel h3{margin:0 0 14px;font-size:15.5px;letter-spacing:-.012em}
+.hr{height:1px;background:var(--line-2);border:0;margin:16px 0}
+
+/* ---------- filters ---------- */
+.fgroup{padding:14px 0;border-top:1px solid var(--line-2)}
+.fgroup:first-of-type{border-top:0;padding-top:0}
+.flabel{font-size:12.5px;font-weight:700;color:var(--ink-3);letter-spacing:.03em;margin-bottom:10px}
+.pill-row{display:flex;flex-wrap:wrap;gap:6px}
+.pill{padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-size:13.8px;color:var(--ink-2);background:#fff}
+.pill:hover,.pill.is-hover{border-color:#c9d2d9}
+.pill.on{border-color:var(--brand-line);background:var(--brand-soft);color:var(--brand-strong);font-weight:650}
+.check{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14.5px;color:var(--ink-2)}
+.box{width:19px;height:19px;border:1.5px solid #c3cad1;border-radius:5px;flex:none;display:grid;place-items:center;background:#fff;color:transparent}
+.box.on{background:var(--brand-strong);border-color:var(--brand-strong);color:#fff}
+.count{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.money{display:flex;gap:8px}
+.money input{width:100%;height:40px;border:1px solid var(--line);border-radius:9px;padding:0 11px;font-size:14.5px}
+.rng{width:100%;margin-top:12px;accent-color:var(--brand-strong)}
+
+/* ---------- skeleton / empty / alert ---------- */
+.sk{background:linear-gradient(90deg,#e9edf1 0%,#f2f5f7 50%,#e9edf1 100%);border-radius:7px}
+.sk-line{height:13px}
+.empty{text-align:center;padding:52px 24px}
+.empty .glyph{width:56px;height:56px;border-radius:16px;background:var(--brand-soft);color:var(--brand-strong);display:grid;place-items:center;margin:0 auto 16px}
+.empty h3{margin:0 0 8px;font-size:19px;letter-spacing:-.02em}
+.empty p{margin:0 auto 20px;max-width:420px;color:var(--ink-3);font-size:15px}
+.alert{display:flex;gap:12px;padding:16px;border-radius:12px;background:var(--bad-soft);border:1px solid #f3c9c5}
+.alert .ic{color:var(--bad);margin-top:2px}
+.alert b{display:block;font-size:15px;margin-bottom:3px}
+.alert p{margin:0 0 12px;font-size:14.5px;color:var(--ink-2)}
+
+/* ---------- pagination ---------- */
+.pager{display:flex;gap:6px;justify-content:center;margin-top:26px}
+.pg{min-width:44px;height:44px;padding:0 13px;border:1px solid var(--line);background:#fff;border-radius:10px;display:grid;place-items:center;font-size:14.5px;color:var(--ink-2)}
+.pg:hover,.pg.is-hover{border-color:#c9d2d9}
+.pg.on{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:650}
+
+/* ---------- footer ---------- */
+.foot{border-top:1px solid var(--line);background:var(--surface);padding:22px 0;color:var(--ink-3);font-size:13.5px}
+.foot-in{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+.foot a{text-decoration:none}
+.foot a:hover{color:var(--brand-strong)}
+.foot .grow{flex:1}
+
+.side .panel{position:sticky;top:20px}
+.qbar{margin-bottom:20px}
+.striphead{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.striphead h2{margin:0;font-size:17.5px;letter-spacing:-.018em;white-space:nowrap}
+.striphead .dot{width:8px;height:8px;border-radius:50%;background:var(--brand);flex:none}
+.striphead .n{color:var(--ink-3);font-size:14px;white-space:nowrap}
+.striphead .more{margin-left:auto;font-size:14.5px;color:var(--brand-strong);text-decoration:none;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.ncards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:30px}
+.ncard{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:15px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.ncard .starts{display:inline-flex;align-items:center;gap:7px;font-size:12.8px;font-weight:700;color:var(--brand-strong);background:var(--brand-soft);border-radius:7px;padding:5px 9px;align-self:flex-start;white-space:nowrap}
+.ncard h3{margin:0;font-size:15.5px;line-height:1.3;letter-spacing:-.014em}
+.ncard .p{font-size:19px;font-weight:800;letter-spacing:-.024em}
+.ncard .p em{font-style:normal;font-size:13px;font-weight:500;color:var(--ink-3);margin-left:7px}
+.ncard .m{display:flex;gap:14px;flex-wrap:wrap;color:var(--ink-3);font-size:13.4px}
+.ncard .m span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.list{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:24px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;transition:border-color .12s ease,box-shadow .12s ease}
+.row:hover,.row.is-hover{border-color:#cdd5db;box-shadow:var(--sh-2)}
+.rmain{flex:1;min-width:0}
+.rtop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:7px}
+.rtop h2{margin:0;font-size:18.5px;line-height:1.28;letter-spacing:-.02em}
+.rtop h2 a{text-decoration:none}
+.row:hover .rtop h2 a,.row.is-hover .rtop h2 a{text-decoration:underline;text-underline-offset:3px}
+.price{display:flex;align-items:baseline;gap:10px;margin-bottom:9px}
+.price b{font-size:24px;font-weight:800;letter-spacing:-.03em}
+.price span{font-size:14px;color:var(--ink-3)}
+.desc{margin:0 0 12px;color:var(--ink-2);font-size:15px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 16px;color:var(--ink-3);font-size:14px;margin-bottom:12px}
+.meta span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.trust{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:13px}
+.author{display:flex;align-items:center;gap:10px;min-width:0}
+.author .ava{width:30px;height:30px;font-size:12px}
+.author b{font-size:14.2px;font-weight:600;display:block}
+.author em{font-style:normal;font-size:13.2px;color:var(--ink-3)}
+.rside{width:214px;flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:16px}
+.posted{font-size:13.4px;color:var(--ink-3);white-space:nowrap}
+.rfoot{text-align:right}
+.replies{font-size:13.4px;color:var(--ink-3);white-space:nowrap;display:block;margin-bottom:9px}
+.racts{display:flex;gap:8px}
+.stwrap{padding:24px 0 48px}
+.stsec{margin-bottom:34px}
+.stlab{font-size:12.5px;font-weight:700;color:var(--ink-3);letter-spacing:.05em;margin-bottom:12px}
+.strow{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.stnote{font-size:13.5px;color:var(--ink-3);margin:8px 0 0}
+.skrow{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;gap:24px;margin-bottom:12px}
+.skmain{flex:1;min-width:0}
+.skside{width:214px;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+
+.dcols{display:flex;gap:24px;align-items:flex-start;padding-bottom:48px}
+.dmain{flex:1;min-width:0}
+.dside{width:340px;flex:none;position:sticky;top:20px}
+.dhead{margin-bottom:18px}
+.dhead h1{margin:0 0 10px;font-size:30px;letter-spacing:-.032em;line-height:1.18}
+.dmetaline{display:flex;gap:14px;flex-wrap:wrap;color:var(--ink-3);font-size:14px;align-items:center}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px}
+.fact{padding:16px 18px;border-left:1px solid var(--line-2);min-width:0}
+.fact:first-child{border-left:0}
+.fact .k{font-size:12.5px;color:var(--ink-3);margin-bottom:7px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.fact .v{font-size:19px;font-weight:750;letter-spacing:-.022em;line-height:1.25}
+.fact .s{font-size:13.4px;color:var(--ink-3);margin-top:4px}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:16px}
+.sec h2{margin:0 0 14px;font-size:19px;letter-spacing:-.024em}
+.sec p{margin:0 0 12px;font-size:15.4px;color:var(--ink-2);line-height:1.6}
+.sec p:last-child{margin-bottom:0}
+.ul{list-style:none;padding:0;margin:0}
+.ul li{display:flex;gap:10px;padding:7px 0;font-size:15.2px;color:var(--ink-2);line-height:1.5}
+.ul li .ic{color:var(--ok);margin-top:3px;flex:none}
+.who{display:flex;gap:14px;align-items:flex-start}
+.who .ava{width:52px;height:52px;font-size:17px}
+.who b{font-size:17px;display:block;letter-spacing:-.018em;margin-bottom:3px}
+.who .role{font-size:14px;color:var(--ink-3);margin-bottom:11px}
+.quote{border-left:2px solid var(--line);padding-left:14px;margin:16px 0 0;color:var(--ink-2);font-size:14.8px;line-height:1.55}
+.quote cite{display:block;font-style:normal;font-size:13.4px;color:var(--ink-3);margin-top:6px}
+.linkmore{display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:14.5px;color:var(--brand-strong);text-decoration:none;font-weight:600}
+.callout{display:flex;gap:12px;padding:16px;border-radius:12px;background:var(--ok-soft);border:1px solid #c9e5d6;margin-bottom:16px}
+.callout .ic{color:#155f3d;margin-top:2px;flex:none}
+.callout b{display:block;font-size:15px;margin-bottom:3px}
+.callout p{margin:0;font-size:14.4px;color:#1c4634;line-height:1.55}
+.buy .amount{font-size:32px;font-weight:800;letter-spacing:-.036em;line-height:1.1}
+.buy .per{color:var(--ink-3);font-size:14.4px;margin:5px 0 14px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.stack .btn{width:100%}
+.sidehint{font-size:13.5px;color:var(--ink-3);text-align:center;margin-top:12px}
+.trust-list{display:flex;flex-direction:column;gap:11px}
+.trust-list div{display:flex;gap:10px;font-size:14.2px;color:var(--ink-2);line-height:1.45}
+.trust-list .ic{color:var(--ok);flex:none;margin-top:2px}
+.steps{margin:0;padding:0;list-style:none}
+.steps li{display:flex;gap:12px;padding:8px 0;font-size:14.3px;color:var(--ink-2);line-height:1.45}
+.steps .no{width:23px;height:23px;border-radius:50%;background:var(--brand-soft);color:var(--brand-strong);font-size:12.5px;font-weight:700;display:grid;place-items:center;flex:none;margin-top:1px}
+.dlgpage{padding:30px 0 52px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.dlg{width:580px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-2);overflow:hidden}
+.dlg-h{display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line-2)}
+.dlg-h h2{margin:0;font-size:18px;letter-spacing:-.022em;flex:1}
+.dlg-b{padding:22px}
+.dlg-f{display:flex;gap:10px;padding:18px 22px;border-top:1px solid var(--line-2);background:#fbfcfd}
+.jobline{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:14px 16px;background:#f4f6f8;border-radius:11px;margin-bottom:20px}
+.jobline b{font-size:15.4px;letter-spacing:-.012em}
+.jobline span{font-size:13.6px;color:var(--ink-3);display:block;margin-top:3px}
+.jobline .amt{font-size:19px;font-weight:800;letter-spacing:-.024em;white-space:nowrap}
+.f-lbl{font-size:14px;font-weight:650;margin-bottom:8px;display:block}
+.f-hint{font-size:13.4px;color:var(--ink-3);margin-top:8px;line-height:1.5}
+.inp{width:100%;height:46px;border:1px solid var(--line);border-radius:10px;padding:0 13px;font-size:15px;background:#fff}
+.inp::placeholder{color:var(--ink-3)}
+.ta{width:100%;min-height:96px;border:1px solid var(--line);border-radius:10px;padding:12px 13px;font-size:15px;line-height:1.55;resize:none;background:#fff;font-family:inherit}
+.fld{margin-bottom:20px}
+.fld:last-child{margin-bottom:0}
+.seg{display:inline-flex;background:var(--line-2);border-radius:10px;padding:3px}
+.seg button{height:38px;padding:0 16px;border:0;background:transparent;border-radius:8px;font-size:14.5px;font-weight:600;color:var(--ink-2)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:var(--sh-1)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sw{width:44px;height:26px;border-radius:14px;background:#cfd6dc;position:relative;flex:none;border:0}
+.sw.on{background:var(--ok)}
+.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+.sw.on i{left:21px}
+.swrow{display:flex;gap:14px;align-items:flex-start}
+.money-in{position:relative;max-width:260px}
+.money-in .inp{height:54px;font-size:22px;font-weight:750;padding-right:36px;letter-spacing:-.02em}
+.money-in .cur{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:17px}
+.counter{float:right;font-size:13px;color:var(--ink-3);font-weight:400}
+.ok-mark{width:56px;height:56px;border-radius:50%;background:var(--ok-soft);color:#155f3d;display:grid;place-items:center;margin:0 auto 16px}
+.dlg-ok{text-align:center;padding:30px 26px 26px}
+.dlg-ok h2{margin:0 0 9px;font-size:21px;letter-spacing:-.024em}
+.dlg-ok p{margin:0 auto;max-width:400px;font-size:15px;color:var(--ink-2);line-height:1.55}
+.pvhead{font-size:12.5px;font-weight:700;color:var(--ink-3);letter-spacing:.05em;margin-bottom:10px}
+.row.compact{padding:16px}
+.row.compact .rtop h2{font-size:16.5px}
+.row.compact .price b{font-size:21px}
+.tiplist{display:flex;flex-direction:column;gap:10px}
+.tiplist div{display:flex;gap:10px;font-size:14.1px;color:var(--ink-2);line-height:1.45}
+.tiplist .ic{color:var(--brand-strong);flex:none;margin-top:2px}
+.stlab{font-size:12.5px;font-weight:700;color:var(--ink-3);letter-spacing:.05em;margin-bottom:12px}
+
+.acols{display:flex;gap:24px;align-items:flex-start;padding:20px 0 48px}
+.amenu{width:250px;flex:none;position:sticky;top:20px}
+.amenu .panel{padding:8px}
+.amenu a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;text-decoration:none;font-size:14.8px;color:var(--ink-2);font-weight:550}
+.amenu a:hover{background:var(--line-2)}
+.amenu a.on{background:var(--brand-soft);color:var(--brand-strong);font-weight:700}
+.amenu a .c{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.amenu a.on .c{color:var(--brand-strong)}
+.amenu .msep{height:1px;background:var(--line-2);margin:8px 12px}
+.amain{flex:1;min-width:0}
+.ahead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.ahead h1{margin:0;font-size:26px;letter-spacing:-.028em;line-height:1.2}
+.ahead .cnt{color:var(--ink-3);font-size:14.5px}
+.ahead .grow{flex:1}
+.tabs{display:flex;gap:26px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.tabs a{padding:0 0 13px;font-size:15px;color:var(--ink-3);text-decoration:none;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.tabs a:hover{color:var(--ink-2)}
+.tabs a.on{color:var(--ink);font-weight:650;box-shadow:inset 0 -2px 0 var(--brand)}
+.tabs .n{font-size:13px;color:var(--ink-3)}
+.arow{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:12px;display:flex;gap:20px}
+.arow .am{flex:1;min-width:0}
+.arow h2{margin:0 0 8px;font-size:17.5px;letter-spacing:-.018em;line-height:1.3}
+.arow h2 a{text-decoration:none}
+.arow h2 a:hover{text-decoration:underline;text-underline-offset:3px}
+.arow .sum{font-size:20px;font-weight:800;letter-spacing:-.026em;margin-bottom:9px}
+.arow .sum em{font-style:normal;font-size:13.4px;font-weight:500;color:var(--ink-3);margin-left:8px}
+.aside2{width:224px;flex:none;display:flex;flex-direction:column;align-items:stretch;gap:9px}
+.aside2 .btn{width:100%}
+.aside2 .top{display:flex;justify-content:flex-end;margin-bottom:2px}
+.status{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;padding:5px 10px;border-radius:7px;white-space:nowrap}
+.status.wait{background:var(--line-2);color:var(--ink-2)}
+.status.new{background:var(--brand-soft);color:var(--brand-strong)}
+.status.ok{background:var(--ok-soft);color:#155f3d}
+.status.off{background:var(--bad-soft);color:#8d2a22}
+.next{font-size:13.6px;color:var(--ink-3);margin-top:11px;display:flex;align-items:center;gap:7px}
+.apps{margin-top:15px;border-top:1px solid var(--line-2);padding-top:4px}
+.app{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-2)}
+.app:last-child{border-bottom:0}
+.app .ava{width:36px;height:36px;font-size:13px}
+.app .nm{font-size:14.8px;font-weight:600}
+.app .sub{font-size:13.2px;color:var(--ink-3);margin-top:3px;display:flex;gap:12px;flex-wrap:wrap}
+.app .sub span{display:flex;align-items:center;gap:5px}
+.app .acts{margin-left:auto;display:flex;gap:8px;flex:none}
+.chatwrap{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;height:588px}
+.dlgs{width:330px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+.dlgs .srch{padding:13px;border-bottom:1px solid var(--line-2)}
+.dlgs .srch input{width:100%;height:40px;border:1px solid var(--line);border-radius:9px;padding:0 12px;font-size:14.5px;background:#fff}
+.dlist{overflow:auto;flex:1}
+.di{display:flex;gap:11px;padding:13px 14px;border-bottom:1px solid var(--line-2);min-width:0}
+.di.on{background:#f6f8fa}
+.di .ava{width:40px;height:40px;font-size:14px}
+.di .t{flex:1;min-width:0}
+.di .nm{font-size:14.6px;font-weight:650;display:flex;align-items:center;gap:8px}
+.di .last{font-size:13.4px;color:var(--ink-3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.di .tm{font-size:12.4px;color:var(--ink-3);white-space:nowrap}
+.unread{width:8px;height:8px;border-radius:50%;background:var(--brand);flex:none}
+.conv{flex:1;display:flex;flex-direction:column;min-width:0}
+.convh{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line-2)}
+.convh .grow{flex:1;min-width:0}
+.convh .ava{width:40px;height:40px;font-size:14px}
+.convh b{font-size:15.5px;display:block}
+.convh .st{font-size:13.2px;color:var(--ink-3);margin-top:2px}
+.jobstrip{display:flex;align-items:center;gap:14px;padding:12px 18px;background:#f6f8fa;border-bottom:1px solid var(--line-2);font-size:14px;color:var(--ink-2)}
+.jobstrip b{font-weight:650;color:var(--ink)}
+.jobstrip .grow{flex:1}
+.msgs{flex:1;overflow:auto;padding:20px 18px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.day{align-self:center;font-size:12.6px;color:var(--ink-3);background:#e8ecf0;padding:4px 12px;border-radius:20px}
+.sys{align-self:center;text-align:center;font-size:13.6px;color:#155f3d;background:var(--ok-soft);padding:10px 15px;border-radius:11px;max-width:470px;line-height:1.45}
+.msg{max-width:66%;padding:11px 14px;border-radius:14px;font-size:14.8px;line-height:1.5}
+.msg .tm{font-size:11.8px;color:var(--ink-3);margin-top:5px;text-align:right}
+.msg.you{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:5px}
+.msg.mine{align-self:flex-end;background:var(--brand-soft);border:1px solid var(--brand-line);border-bottom-right-radius:5px}
+.compose{display:flex;gap:10px;padding:13px 18px;border-top:1px solid var(--line-2);background:#fff}
+.compose input{flex:1;height:44px;border:1px solid var(--line);border-radius:10px;padding:0 14px;font-size:15px;background:#fff}
+.phero{display:flex;gap:20px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:14px}
+.phero .ava{width:84px;height:84px;font-size:27px}
+.phero h1{margin:0 0 6px;font-size:25px;letter-spacing:-.028em}
+.phero .sub{color:var(--ink-3);font-size:14.6px;margin-bottom:13px}
+.phero .grow{flex:1;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px}
+.stat{padding:16px 18px;border-left:1px solid var(--line-2)}
+.stat:first-child{border-left:0}
+.stat .v{font-size:22px;font-weight:800;letter-spacing:-.028em}
+.stat .k{font-size:13px;color:var(--ink-3);margin-top:5px}
+.rev{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:12px}
+.revh{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.revh .ava{width:38px;height:38px;font-size:13px}
+.revh b{font-size:15px;display:block}
+.revh .dt{font-size:13px;color:var(--ink-3);margin-top:2px}
+.revh .grow{flex:1;min-width:0}
+.stars{display:flex;gap:2px}
+.stars .ic{width:15px;height:15px}
+.st-on{color:var(--brand);fill:currentColor}
+.st-off{color:#cfd6dc}
+.rev p{margin:0;font-size:15px;color:var(--ink-2);line-height:1.55}
+.rev .jl{display:inline-flex;gap:6px;align-items:center;margin-top:11px;font-size:13.6px;color:var(--ink-3);text-decoration:none}
+.rev .jl:hover{color:var(--brand-strong)}
+.prog{height:8px;border-radius:5px;background:var(--line-2);overflow:hidden;margin:12px 0 10px}
+.prog i{display:block;height:100%;background:var(--ok);width:80%}
+.todo{display:flex;flex-direction:column;gap:9px}
+.todo div{display:flex;gap:10px;font-size:14.2px;color:var(--ink-2);line-height:1.45}
+.todo .ic{flex:none;margin-top:2px}
+.todo .done{color:var(--ok)}
+.todo .wait{color:var(--ink-3)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{display:block;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;text-decoration:none}
+.card:hover{border-color:#cdd5db;box-shadow:var(--sh-2)}
+.card b{display:block;font-size:16.5px;margin-bottom:6px;letter-spacing:-.016em}
+.card span{font-size:14px;color:var(--ink-3);line-height:1.5;display:block}
+.idxwrap{padding:26px 0 48px}
+.idxwrap h1{margin:0 0 6px;font-size:28px;letter-spacing:-.03em}
+.idxwrap .lead{color:var(--ink-3);font-size:15px;margin:0 0 22px}
+.idxwrap h2{font-size:14px;letter-spacing:.04em;color:var(--ink-3);margin:26px 0 12px}
+
+.view{display:none}
+.view.on{display:block}
+[hidden]{display:none!important}
+.catnav a{cursor:pointer}
+.empty h3{margin:0 0 8px;font-size:19px;letter-spacing:-.02em}
+.empty p{margin:0 0 18px;color:var(--ink-3);font-size:14.6px}
+</style>
+</head>
+<body data-route="feed/all">
+<svg class="sprite" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.2-2.9 7.5-7 9-4.1-1.5-7-4.8-7-9V6z"/><path d="m8.7 12 2.3 2.3 4.3-4.6"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 4.2l2.3 4.7 5.2.8-3.8 3.7.9 5.2-4.6-2.4-4.6 2.4.9-5.2L4.5 9.7l5.2-.8z"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.6 12 20 12 20z"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 12.5c0 3.6-3.6 6.5-8 6.5-1 0-2-.2-2.9-.5L4.5 20l1.2-3.2C4.6 15.7 4 14.2 4 12.5 4 8.9 7.6 6 12 6s8 2.9 8 6.5z"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.8"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.8 19c0-2.9 2.3-5.2 5.2-5.2s5.2 2.3 5.2 5.2M16 13.8c2.4 0 4.2 1.9 4.2 4.2"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3.5" y="6.5" width="17" height="12" rx="2.5"/><path d="M3.5 10h17"/><circle cx="16.5" cy="14" r="1.3"/></symbol>
+<symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.6" r="1.9"/><path d="M10 21l2.4-5.2-2-2.2.8-4.6 3.4 1.6 2.4 2.2M8.6 11.4l2.6-2.4M12.4 15.8 15 21"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5.5 13.5H11L10.5 21 18.5 10.5H13z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3.5V6M16 3.5V6"/></symbol>
+<symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.3 1.6M9.5 3h5"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.6 4.5L19 6.5"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6"/></symbol>
+<symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h6"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.2"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.5 21 19.5H3z"/><path d="M12 10v4M12 16.8v.2"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M20.5 3.5 3.5 10.5l6.6 2.9 2.9 6.6z"/><path d="M10.1 13.4 20.5 3.5"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.8 12S6.5 6 12 6s9.2 6 9.2 6-3.7 6-9.2 6-9.2-6-9.2-6z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+<symbol id="i-ruble" viewBox="0 0 24 24"><path d="M8.5 20V4.5h4.7a4.2 4.2 0 0 1 0 8.4H6.5M6.5 16.6h7"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4.5V10h-5.5"/></symbol>
+</defs></svg>
+
+<header class="hdr"><div class="wrap hdr-in">
+  <a class="logo" href="#/feed/all"><span class="logo-mark"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg></span>Дельник</a>
+  <button class="allcat"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg>Все категории<svg class="ic ic-sm" aria-hidden="true"><use href="#i-chev"/></svg></button>
+  <form class="searchbar" onsubmit="return false">
+    <input class="q" placeholder="Грузчик, уборка, курьер…" aria-label="Поиск заявок">
+    <span class="geo"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Калининград<svg class="ic ic-sm" aria-hidden="true"><use href="#i-chev"/></svg></span>
+    <button class="go" type="submit"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>Найти</button>
+  </form>
+  <a class="btn btn-outline" href="#/create"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Разместить заявку</a>
+  <div class="hdr-acts">
+    <button class="iconbtn" aria-label="Избранное"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-heart"/></svg><span class="dot-n">3</span></button>
+    <a class="iconbtn" href="#/chat" aria-label="Сообщения"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-chat"/></svg><span class="dot-n">2</span></a>
+    <a class="me" href="#/profile"><span class="ava">АК</span><span>Антон</span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-chev"/></svg></a>
+  </div>
+</div></header>
+<nav class="catnav"><div class="wrap catnav-in"><a href="#/feed/all" data-cat="all" class="on">Все заявки</a><a href="#/feed/pogruzka" data-cat="pogruzka">Погрузка и грузчики</a><a href="#/feed/uborka" data-cat="uborka">Уборка</a><a href="#/feed/kurjery" data-cat="kurjery">Курьеры</a><a href="#/feed/strojka" data-cat="strojka">Стройка и ремонт</a><a href="#/feed/mebel" data-cat="mebel">Мебель</a><a href="#/feed/promo" data-cat="promo">Промо</a><a href="#/feed/sklad" data-cat="sklad">Склад</a><a href="#/feed/raznoe" data-cat="raznoe">Разное</a><span class="grow"></span><span class="muted">96 новых заявок сегодня</span></div></nav>
+<section class="view on" data-view="feed"><div class="wrap"><nav class="crumbs"><a href="#/feed/all">Дельник</a><span class="sep">/</span><a href="#/feed/all">Калининград</a><span class="sep">/</span><span id="crumb-cat">Подработка</span></nav></div><main class="wrap cols">
+<aside class="side"><div class="panel panel-p">
+  <h3>Фильтры</h3>
+  <div class="fgroup">
+    <div class="flabel">КОГДА</div>
+    <div class="pill-row"><button class="pill on">Сегодня</button><button class="pill">Завтра</button><button class="pill">Выходные</button><button class="pill">Любое</button></div>
+  </div>
+  <div class="fgroup">
+    <div class="flabel">ОПЛАТА, ₽</div>
+    <div class="money"><input value="2 000" aria-label="От" class="tnum"><input value="15 000" aria-label="До" class="tnum"></div>
+    <input class="rng" type="range" min="0" max="100" value="38" aria-label="Диапазон оплаты">
+  </div>
+  <div class="fgroup">
+    <div class="flabel">КАК ДОБРАТЬСЯ</div>
+    <div class="pill-row"><button class="pill on">Пешком</button><button class="pill">На транспорте</button><button class="pill">Любое</button></div>
+  </div>
+  <div class="fgroup">
+    <div class="flabel">ЗАКАЗЧИК</div>
+    <label class="check"><span class="box on"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg></span>Проверенная личность<span class="count tnum">842</span></label>
+    <label class="check"><span class="box on"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg></span>Гарантия оплаты<span class="count tnum">513</span></label>
+    <label class="check"><span class="box"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg></span>Рейтинг от 4,5<span class="count tnum">690</span></label>
+    <label class="check"><span class="box"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg></span>Можно без опыта<span class="count tnum">204</span></label>
+  </div>
+  <hr class="hr">
+  <button class="btn btn-quiet" style="width:100%">Сбросить фильтры</button>
+</div></aside><section class="main"><div class="phead"><h1 id="feed-h1">Подработка в Калининграде</h1><span class="cnt tnum" id="feed-cnt">16 активных заявок</span><span class="sortsel">Сначала новые<svg class="ic ic-sm" aria-hidden="true"><use href="#i-chev"/></svg></span></div>
+<div class="chips qbar">
+  <button class="chip on"><svg class="ic" aria-hidden="true"><use href="#i-bolt"/></svg>Сейчас <span class="n tnum">12</span></button>
+  <button class="chip"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg>Сегодня <span class="n tnum">38</span></button>
+  <button class="chip"><svg class="ic" aria-hidden="true"><use href="#i-cal"/></svg>Завтра <span class="n tnum">54</span></button>
+  <button class="chip"><svg class="ic" aria-hidden="true"><use href="#i-walk"/></svg>Пешком до 20 мин <span class="n tnum">21</span></button>
+  <button class="chip"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты <span class="n tnum">31</span></button>
+</div><div id="near-block"><div class="striphead"><span class="dot"></span><h2>Начинается в ближайшие часы</h2><span class="n">3 заявки рядом с вами</span><a class="more" href="#/feed/pogruzka">Все срочные<svg class="ic ic-sm" aria-hidden="true"><use href="#i-chev-r"/></svg></a></div><div class="ncards"><article class="ncard"><span class="starts"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-bolt"/></svg>Через 2 часа</span><h3>Разгрузить фуру с плиткой</h3><div class="p tnum">4 500 ₽<em>1 125 ₽/ч</em></div><div class="m"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>14:00 · 4 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>18 мин пешком</span></div><a class="btn btn-primary btn-sm" href="#/apply">Откликнуться</a></article><article class="ncard"><span class="starts"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-bolt"/></svg>Через 5 часов</span><h3>Помощник на склад на вечер</h3><div class="p tnum">2 100 ₽<em>350 ₽/ч</em></div><div class="m"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>17:00 · 6 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><a class="btn btn-primary btn-sm" href="#/apply">Откликнуться</a></article><article class="ncard"><span class="starts"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-bolt"/></svg>Через 8 часов</span><h3>Мойка окон в кафе</h3><div class="p tnum">2 800 ₽<em>1 400 ₽/ч</em></div><div class="m"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>20:00 · 2 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>9 мин пешком</span></div><a class="btn btn-primary btn-sm" href="#/apply">Откликнуться</a></article></div></div><div class="striphead"><h2 id="feed-listhead">Все заявки</h2><span class="n">обновлено минуту назад</span></div><div class="list" id="feed-list"><article data-cat="pogruzka" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Разгрузить фуру с плиткой</a></h2><span class="tag warn"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-bolt"/></svg>Срочно</span></div><div class="price"><b class="tnum">4 500 ₽</b><span>за смену · 1 125 ₽/ч</span></div><p class="desc">Фура 20 тонн, плитка в коробках по 25 кг, тележки на складе есть.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 14:00 · 4 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Московский пр-т · 1,1 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>18 мин пешком</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,9 · 132 задания</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">БС</span><span><b>ООО «Балтстрой»</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">25 минут назад</span><div class="rfoot"><span class="replies">7 откликов</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="uborka" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Уборка квартиры после ремонта</a></h2></div><div class="price"><b class="tnum">3 800 ₽</b><span>за задание · 760 ₽/ч</span></div><p class="desc">Двушка 62 м², моющие средства и пылесос у заказчика, вынос мусора не нужен.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 18:30 · 5 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>ул. Черняховского · 1,4 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>12 мин пешком</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,8 · 47 заданий</span></div><div class="author"><span class="ava">МК</span><span><b>Марина К.</b><em>Заказчик</em></span></div></div><div class="rside"><span class="posted">40 минут назад</span><div class="rfoot"><span class="replies">3 отклика</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="sklad" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Комплектовщик заказов на склад</a></h2></div><div class="price"><b class="tnum">2 100 ₽</b><span>за смену · 350 ₽/ч</span></div><p class="desc">Сборка заказов по накладной, работа со сканером, обучение на месте.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Завтра 09:00 · 6 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Правая Набережная · 2,8 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,7 · 64 задания</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">СН</span><span><b>Склад «Северный»</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">1 час назад</span><div class="rfoot"><span class="replies">4 отклика</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="promo" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Промоутер у ТЦ «Европа»</a></h2></div><div class="price"><b class="tnum">2 200 ₽</b><span>за день · 440 ₽/ч</span></div><p class="desc">Раздача листовок у входа, форма и материалы выдаём на месте.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 16:00 · 5 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>пл. Победы · 0,9 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>11 мин пешком</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,9 · 210 заданий</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">ЕВ</span><span><b>ТЦ «Европа»</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">1 час назад</span><div class="rfoot"><span class="replies">6 откликов</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="uborka" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Мойка витрин и окон в кафе</a></h2></div><div class="price"><b class="tnum">2 800 ₽</b><span>за задание · 1 400 ₽/ч</span></div><p class="desc">Витрины первого этажа снаружи и изнутри, стремянка и средства наши.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 20:00 · 2 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Ленинский пр-т · 0,7 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>9 мин пешком</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,8 · 51 задание</span></div><div class="author"><span class="ava">КП</span><span><b>Кафе «Причал»</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">2 часа назад</span><div class="rfoot"><span class="replies">3 отклика</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="kurjery" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Курьер на день, своя машина</a></h2><span class="tag warn"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-bolt"/></svg>Срочно</span></div><div class="price"><b class="tnum">400 ₽/ч</b><span>до 3 200 ₽ за смену</span></div><p class="desc">Доставка цветочных заказов по городу, бензин компенсируется отдельно.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 09:00 · 8 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Центр · 3,6 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,6 · 18 заданий</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">МЦ</span><span><b>Магазин цветов</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">2 часа назад</span><div class="rfoot"><span class="replies">11 откликов</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="pogruzka" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Грузчики на переезд офиса</a></h2></div><div class="price"><b class="tnum">3 600 ₽</b><span>за смену · 600 ₽/ч</span></div><p class="desc">Коробки, столы, два монитора. Лифт есть, машина ждёт у подъезда.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>13 августа 10:00 · 6 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>ул. Театральная · 2,2 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>5,0 · 27 заданий</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">ДС</span><span><b>Дмитрий С.</b><em>Заказчик</em></span></div></div><div class="rside"><span class="posted">3 часа назад</span><div class="rfoot"><span class="replies">5 откликов</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="mebel" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Сборка мебели: три шкафа</a></h2></div><div class="price"><b class="tnum">5 000 ₽</b><span>за задание</span></div><p class="desc">Шкафы в разобранном виде, инструмент нужен свой.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>12 августа · 3 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Сельма · 5,2 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>5,0 · 9 заданий</span></div><div class="author"><span class="ava">ИП</span><span><b>Игорь П.</b><em>Заказчик</em></span></div></div><div class="rside"><span class="posted">3 часа назад</span><div class="rfoot"><span class="replies">2 отклика</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="raznoe" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Выгул собаки три дня подряд</a></h2></div><div class="price"><b class="tnum">1 500 ₽</b><span>за 3 дня · 500 ₽/день</span></div><p class="desc">Лабрадор, спокойный. Прогулка утром 40 минут, ключи передам лично.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>15–17 августа · 40 мин</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Сельма · 3,3 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,9 · 12 заданий</span></div><div class="author"><span class="ava">ОР</span><span><b>Ольга Р.</b><em>Заказчик</em></span></div></div><div class="rside"><span class="posted">4 часа назад</span><div class="rfoot"><span class="replies">8 откликов</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="kurjery" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Пеший курьер по центру</a></h2></div><div class="price"><b class="tnum">1 800 ₽</b><span>за смену · 300 ₽/ч</span></div><p class="desc">Доставка документов между офисами, маршрут в пределах центра.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Завтра 11:00 · 6 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>пл. Победы · 1,0 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>12 мин пешком</span></div><div class="trust"><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,4 · 9 заданий</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">КС</span><span><b>Курьерская служба</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">5 часов назад</span><div class="rfoot"><span class="replies">2 отклика</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="strojka" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Подсобный рабочий на объект</a></h2></div><div class="price"><b class="tnum">4 400 ₽</b><span>за смену · 550 ₽/ч</span></div><p class="desc">Подача материала, уборка участка. Спецодежда выдаётся.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>14 августа 08:00 · 8 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Сельма · 4,1 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,5 · 22 задания</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">СД</span><span><b>СтройДом</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">5 часов назад</span><div class="rfoot"><span class="replies">1 отклик</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="sklad" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Инвентаризация на складе, ночная смена</a></h2></div><div class="price"><b class="tnum">3 000 ₽</b><span>за ночь · 375 ₽/ч</span></div><p class="desc">Пересчёт остатков по секциям, работа в паре с кладовщиком.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>14 августа 22:00 · 8 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Балтрайон · 6,4 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,6 · 38 заданий</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">ТБ</span><span><b>ТД «Балтика»</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">6 часов назад</span><div class="rfoot"><span class="replies">1 отклик</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="strojka" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Демонтаж перегородки из гипсокартона</a></h2></div><div class="price"><b class="tnum">6 000 ₽</b><span>за задание</span></div><p class="desc">Перегородка 3×2,7 м, вынос мусора в контейнер во дворе.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>16 августа 09:00 · 5 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Московский р-н · 4,7 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,8 · 73 задания</span></div><div class="author"><span class="ava">РС</span><span><b>Ремонт-Сервис</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">7 часов назад</span><div class="rfoot"><span class="replies">6 откликов</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="mebel" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Разобрать и перевезти кухню</a></h2></div><div class="price"><b class="tnum">3 400 ₽</b><span>за задание</span></div><p class="desc">Гарнитур 3 метра, разбор и погрузка в газель. Машина заказана.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>13 августа 15:00 · 4 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>ул. Гагарина · 2,9 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,7 · 16 заданий</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">НВ</span><span><b>Наталья В.</b><em>Заказчик</em></span></div></div><div class="rside"><span class="posted">вчера</span><div class="rfoot"><span class="replies">3 отклика</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="promo" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Раздача листовок у вокзала</a></h2></div><div class="price"><b class="tnum">1 900 ₽</b><span>за смену · 380 ₽/ч</span></div><p class="desc">Утренний поток, 1 000 листовок, форма и стойка выдаются.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Завтра 08:00 · 5 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Южный вокзал · 1,8 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>22 мин пешком</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,5 · 41 задание</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">ПА</span><span><b>Промо-агентство</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">вчера</span><div class="rfoot"><span class="replies">9 откликов</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article data-cat="raznoe" class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Помощь на семейном празднике</a></h2></div><div class="price"><b class="tnum">2 600 ₽</b><span>за вечер · 650 ₽/ч</span></div><p class="desc">Накрыть столы, помочь с посудой, убрать после гостей.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>16 августа 17:00 · 4 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Светлогорск · 38 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>5,0 · 6 заданий</span></div><div class="author"><span class="ava">ЕТ</span><span><b>Елена Т.</b><em>Заказчик</em></span></div></div><div class="rside"><span class="posted">вчера</span><div class="rfoot"><span class="replies">4 отклика</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article></div><div class="empty" id="feed-empty" hidden><span class="glyph"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-search"/></svg></span><h3>В этой категории пока нет заявок</h3><p>Попробуйте соседнюю категорию или включите уведомления — пришлём, как только появится подходящая.</p><a class="btn btn-primary" href="#/feed/all">Показать все заявки</a></div><div id="feed-pager"><div class="pager"><button class="pg on">1</button><button class="pg">2</button><button class="pg">3</button><button class="pg">4</button><button class="pg">…</button><button class="pg">42</button><button class="pg">Далее</button></div></div></section></main></section>
+<section class="view" data-view="job"><div class="wrap"><nav class="crumbs"><a href="#">Дельник</a><span class="sep">/</span><a href="#">Калининград</a><span class="sep">/</span><a href="#">Подработка</a><span class="sep">/</span><span>Разгрузить фуру с плиткой</span></nav></div><main class="wrap dcols"><section class="dmain"><div class="dhead"><h1>Разгрузить фуру с плиткой</h1><div class="dmetaline"><span class="tag warn"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-bolt"/></svg>Начинается через 2 часа</span><span>Заявка № 1248</span><span>Погрузка и грузчики</span><span>Опубликована 40 минут назад</span><span>7 откликов</span></div></div><div class="facts"><div class="fact"><div class="k"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-wallet"/></svg>Оплата</div><div class="v tnum">4 500 ₽</div><div class="s tnum">1 125 ₽ в час</div></div><div class="fact"><div class="k"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Когда</div><div class="v tnum">Сегодня 14:00</div><div class="s tnum">вторник, 11 августа</div></div><div class="fact"><div class="k"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-timer"/></svg>Сколько</div><div class="v tnum">4 часа</div><div class="s tnum">примерно до 18:00</div></div><div class="fact"><div class="k"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Где</div><div class="v tnum">Московский пр-т</div><div class="s tnum">2,1 км · 18 мин пешком</div></div></div><div class="sec"><h2>Что нужно сделать</h2><p>Приходит фура с керамической плиткой. Нужно разгрузить её и аккуратно сложить на складе. Работаете в паре со вторым исполнителем, бригадир встретит на проходной.</p><ul class="ul"><li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>Коробки по 20–25 кг, всего около 400 штук</span></li><li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>Перенести на склад — 30 метров по ровному, без лестниц</span></li><li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>Сложить по маркировке, схему покажет бригадир</span></li></ul></div><div class="sec"><h2>Условия</h2><ul class="ul"><li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>Перчатки и пояс выдаём на месте</span></li><li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>Опыт не обязателен, но нужна физическая выносливость</span></li><li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>Оплата в день выполнения — на карту или наличными</span></li><li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>С собой паспорт — нужен для пропуска на территорию</span></li></ul></div><div class="sec"><h2>Заказчик</h2><div class="who"><span class="ava">БС</span><div style="min-width:0"><b>ООО «Балтстрой»</b><div class="role">Компания · на Дельнике с 2023 года</div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,9 · 132 задания</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><blockquote class="quote">Приехали вовремя, всё объяснили на месте, рассчитались в тот же день без задержек.<cite>Сергей М., 3 августа</cite></blockquote><a class="linkmore" href="#">Все отзывы — 132<svg class="ic ic-sm" aria-hidden="true"><use href="#i-chev-r"/></svg></a></div></div></div><div class="callout"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><div><b>Оплата под гарантией Дельника</b><p>4 500 ₽ резервируются в момент найма и переходят вам сразу после того, как заказчик подтвердит работу. Если он пропадёт — деньги всё равно выплатим мы.</p></div></div><div class="striphead"><h2>Похожие заявки рядом</h2><span class="n">в радиусе 3 км</span></div><div class="list"><article class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Подсобный рабочий на объект</a></h2></div><div class="price"><b class="tnum">4 400 ₽</b><span>за смену · 550 ₽/ч</span></div><p class="desc">Подача материала, уборка участка. Спецодежда выдаётся.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>14 августа 08:00 · 8 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Сельма · 4,1 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>на транспорте</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,5 · 22 задания</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">СД</span><span><b>СтройДом</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">5 часов назад</span><div class="rfoot"><span class="replies">1 отклик</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Промоутер у ТЦ «Европа»</a></h2></div><div class="price"><b class="tnum">2 200 ₽</b><span>за день · 440 ₽/ч</span></div><p class="desc">Раздача листовок у входа, форма и материалы выдаём на месте.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 16:00 · 5 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>пл. Победы · 0,9 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>11 мин пешком</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,9 · 210 заданий</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">ЕВ</span><span><b>ТЦ «Европа»</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">1 час назад</span><div class="rfoot"><span class="replies">6 откликов</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article></div></section><aside class="dside"><div class="panel panel-p buy"><div class="amount tnum">4 500 ₽</div><div class="per tnum">за смену · 1 125 ₽/ч</div><div class="stack"><button class="btn btn-primary btn-lg">Откликнуться</button><button class="btn btn-quiet"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>Написать заказчику</button><button class="btn btn-quiet"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>В избранное</button></div><p class="sidehint">Обычно отвечает за 15 минут</p><hr class="hr"><div class="trust-list"><div><svg class="ic" aria-hidden="true"><use href="#i-walk"/></svg><span>18 минут пешком от вас</span></div><div><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg><span>7 человек уже откликнулись, набирают двоих</span></div><div><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg><span>Сумма резервируется при найме</span></div></div></div><div class="panel panel-p" style="margin-top:16px"><h3>Как проходит отклик</h3><ol class="steps"><li><span class="no">1</span><span>Отправляете отклик — бесплатно и без комиссии</span></li><li><span class="no">2</span><span>Заказчик выбирает исполнителя — открывается чат</span></li><li><span class="no">3</span><span>Работаете и получаете оплату в тот же день</span></li></ol></div></aside></main></section>
+<section class="view" data-view="apply"><main class="wrap dlgpage"><div style="width:580px"><div class="stlab">ШАГ 1 — ФОРМА ОТКЛИКА</div></div><div class="dlg"><div class="dlg-h"><h2>Отклик на заявку</h2><button class="iconbtn" aria-label="Закрыть"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button></div><div class="dlg-b"><div class="jobline"><div><b>Разгрузить фуру с плиткой</b><span>Сегодня 14:00 · 4 ч · Московский пр-т</span></div><div class="amt tnum">4 500 ₽</div></div><div class="fld"><label class="f-lbl">Сообщение заказчику<span class="counter">98 / 300</span></label><textarea class="ta">Здравствуйте! Готов подъехать к 14:00, есть опыт разгрузки стройматериалов. Живу в 20 минутах пешком.</textarea><p class="f-hint">Отклики с сообщением выбирают в три раза чаще.</p></div><div class="fld"><label class="f-lbl">Когда можете начать</label><div class="seg"><button class="on">К 14:00</button><button>Могу раньше</button><button>Нужно уточнить</button></div></div><label class="check"><span class="box on"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg></span>Показать рейтинг 4,8 и 47 выполненных заданий</label></div><div class="dlg-f"><button class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>Отправить отклик</button><button class="btn btn-quiet">Отмена</button></div></div><div style="width:580px;margin-top:14px"><div class="stlab">ШАГ 2 — ПОДТВЕРЖДЕНИЕ</div></div><div class="dlg"><div class="dlg-ok"><div class="ok-mark"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-check"/></svg></div><h2>Отклик отправлен</h2><p>Заказчик обычно отвечает за 15 минут. Когда он выберет вас, откроется чат, а заявка появится в разделе «Мои отклики».</p></div><div class="dlg-f" style="justify-content:center"><button class="btn btn-primary">Перейти в чат</button><button class="btn btn-quiet">Смотреть другие заявки</button></div></div></main></section>
+<section class="view" data-view="create"><div class="wrap"><nav class="crumbs"><a href="#">Дельник</a><span class="sep">/</span><a href="#">Калининград</a><span class="sep">/</span><a href="#">Подработка</a><span class="sep">/</span><span>Разместить заявку</span></nav></div><main class="wrap dcols"><section class="dmain"><div class="dhead"><h1>Разместить заявку</h1><div class="dmetaline"><span>Первый отклик обычно приходит за 15 минут</span><span>Публикация бесплатная</span></div></div><div class="sec"><h2>Что нужно сделать</h2><div class="fld"><label class="f-lbl">Категория</label><div class="pill-row"><button class="pill on">Погрузка</button><button class="pill">Уборка</button><button class="pill">Курьеры</button><button class="pill">Стройка</button><button class="pill">Мебель</button><button class="pill">Промо</button><button class="pill">Склад</button><button class="pill">Разное</button></div></div><div class="fld"><label class="f-lbl">Заголовок<span class="counter">28 / 70</span></label><input class="inp" value="Разгрузить фуру с плиткой"><p class="f-hint">Напишите суть задания одной строкой, как сказали бы знакомому.</p></div><div class="fld"><label class="f-lbl">Описание</label><textarea class="ta">Коробки по 20–25 кг, около 400 штук. Перенести на склад — 30 метров по ровному, без лестниц. Перчатки выдаём.</textarea></div></div><div class="sec"><h2>Когда и сколько</h2><div class="fld"><label class="f-lbl">День</label><div class="pill-row"><button class="pill on">Сегодня</button><button class="pill">Завтра</button><button class="pill">Выбрать дату</button><button class="pill">Гибкое время</button></div></div><div class="two"><div><label class="f-lbl">Начало</label><input class="inp tnum" value="14:00"></div><div><label class="f-lbl">Длительность</label><input class="inp" value="4 часа"></div></div></div><div class="sec"><h2>Сколько платите</h2><div class="fld"><div class="seg"><button class="on">За задание</button><button>За час</button></div></div><div class="fld"><div class="money-in"><input class="inp tnum" value="4 500"><span class="cur">₽</span></div><p class="f-hint">Похожие заявки в Калининграде — от 3 800 до 5 200 ₽. С такой суммой откликаются примерно за 20 минут.</p></div></div><div class="sec"><h2>Где</h2><div class="fld"><input class="inp" value="Московский пр-т, 12"><label class="check"><span class="box on"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg></span>Точный адрес показать только выбранному исполнителю</label></div></div><div class="sec"><h2>Безопасность</h2><div class="swrow"><button class="sw on" aria-label="Гарантия оплаты"><i></i></button><div><b style="font-size:15.4px">Гарантия оплаты</b><p style="margin:5px 0 0;font-size:14.4px;color:var(--ink-2);line-height:1.55">Сумма резервируется при найме и переводится исполнителю после вашего подтверждения. Заявки с гарантией получают вдвое больше откликов.</p></div></div></div><div class="strow" style="gap:10px"><button class="btn btn-primary btn-lg">Опубликовать заявку</button><button class="btn btn-quiet btn-lg">Сохранить черновик</button></div></section><aside class="dside"><div class="pvhead">ТАК ЗАЯВКУ УВИДЯТ В ЛЕНТЕ</div><article class="row compact"><div class="rmain"><div class="rtop"><h2><a href="#">Разгрузить фуру с плиткой</a></h2></div><div class="price"><b class="tnum">4 500 ₽</b><span>за задание</span></div><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 14:00 · 4 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Московский пр-т</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">БС</span><span><b>ООО «Балтстрой»</b><em>Компания</em></span></div></div></article><div class="panel panel-p" style="margin-top:16px"><h3>Что ускоряет отклики</h3><div class="tiplist"><div><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>Точное время начала вместо «гибко»</span></div><div><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg><span>Сумма сразу, без «договоримся»</span></div><div><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><span>Включённая гарантия оплаты</span></div><div><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><span>Одно-два предложения о том, что именно делать</span></div></div></div></aside></main></section>
+<section class="view" data-view="responses"><main class="wrap acols"><aside class="amenu"><div class="panel"><a href="#/responses" class="on"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>Мои отклики<span class="c tnum">3</span></a><a href="#/myjobs"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg>Мои заявки<span class="c tnum">2</span></a><a href="#/chat"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>Сообщения<span class="c tnum">2</span></a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>Избранное<span class="c tnum">3</span></a><div class="msep"></div><a href="#/profile"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>Профиль и отзывы</a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Выплаты</a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg>Настройки</a></div></aside><section class="amain"><div class="ahead"><h1>Мои отклики</h1><span class="cnt">3 активных · 12 выполнено</span></div><nav class="tabs"><a href="#" class="on">Активные<span class="n tnum">3</span></a><a href="#">Приглашения<span class="n tnum">1</span></a><a href="#">Выполненные<span class="n tnum">12</span></a><a href="#">Отклонённые<span class="n tnum">2</span></a></nav><article class="arow"><div class="am"><h2><a href="#/job">Разгрузить фуру с плиткой</a></h2><div class="sum tnum">4 500 ₽<em>1 125 ₽/ч</em></div><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 14:00 · 4 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Московский пр-т</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-users"/></svg>ООО «Балтстрой»</span></div><div class="next"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-timer"/></svg>Откликнулись 40 минут назад · заказчик обычно отвечает за 15 минут</div></div><div class="aside2"><div class="top"><span class="status wait">Ждём ответа</span></div><a class="btn btn-quiet" href="#/chat"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>Написать</a><button class="btn btn-quiet">Отозвать отклик</button></div></article><article class="arow"><div class="am"><h2><a href="#/job">Промоутер у ТЦ «Европа»</a></h2><div class="sum tnum">2 200 ₽<em>440 ₽/ч</em></div><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 16:00 · 5 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>пл. Победы</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-users"/></svg>ТЦ «Европа»</span></div><div class="next"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-alert"/></svg>Ответьте до 15:00, иначе заказчик выберет другого исполнителя</div></div><div class="aside2"><div class="top"><span class="status new">Вас выбрали</span></div><button class="btn btn-primary">Подтвердить участие</button><button class="btn btn-quiet">Отказаться</button></div></article><article class="arow"><div class="am"><h2><a href="#/job">Курьер на день, своя машина</a></h2><div class="sum tnum">3 200 ₽<em>400 ₽/ч</em></div><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 09:00 · 8 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Центр</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-users"/></svg>Магазин цветов</span></div><div class="next"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-eye"/></svg>Заказчик открыл отклик 2 часа назад · всего 11 откликов</div></div><div class="aside2"><div class="top"><span class="status wait">Просмотрен</span></div><a class="btn btn-quiet" href="#/chat"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>Написать</a><button class="btn btn-quiet">Отозвать отклик</button></div></article></section></main></section>
+<section class="view" data-view="myjobs"><main class="wrap acols"><aside class="amenu"><div class="panel"><a href="#/responses"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>Мои отклики<span class="c tnum">3</span></a><a href="#/myjobs" class="on"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg>Мои заявки<span class="c tnum">2</span></a><a href="#/chat"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>Сообщения<span class="c tnum">2</span></a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>Избранное<span class="c tnum">3</span></a><div class="msep"></div><a href="#/profile"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>Профиль и отзывы</a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Выплаты</a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg>Настройки</a></div></aside><section class="amain"><div class="ahead"><h1>Мои заявки</h1><span class="cnt">2 активные</span><span class="grow"></span><a class="btn btn-primary" href="#/create"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Разместить заявку</a></div><nav class="tabs"><a href="#" class="on">Активные<span class="n tnum">2</span></a><a href="#">Черновики<span class="n tnum">1</span></a><a href="#">Завершённые<span class="n tnum">8</span></a><a href="#">Архив</a></nav><article class="arow"><div class="am"><h2><a href="#/job">Разгрузить фуру с плиткой</a></h2><div class="sum tnum">4 500 ₽<em>за задание · гарантия оплаты включена</em></div><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 14:00 · 4 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Московский пр-т, 12</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-eye"/></svg>312 просмотров</span></div><div class="apps"><div class="app"><span class="ava">АК</span><div><div class="nm">Антон К.</div><div class="sub"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg>4,8 · 47 заданий</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>18 мин пешком</span></div></div><div class="acts"><a class="btn btn-quiet btn-sm" href="#/chat">Написать</a><button class="btn btn-primary btn-sm">Выбрать</button></div></div><div class="app"><span class="ava">ДС</span><div><div class="nm">Дмитрий С.</div><div class="sub"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg>4,6 · 23 задания</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>на транспорте</span></div></div><div class="acts"><a class="btn btn-quiet btn-sm" href="#/chat">Написать</a><button class="btn btn-quiet btn-sm">Выбрать</button></div></div><div class="app"><span class="ava">РГ</span><div><div class="nm">Руслан Г.</div><div class="sub"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-star"/></svg>5,0 · 8 заданий</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>25 мин пешком</span></div></div><div class="acts"><a class="btn btn-quiet btn-sm" href="#/chat">Написать</a><button class="btn btn-quiet btn-sm">Выбрать</button></div></div></div></div><div class="aside2"><div class="top"><span class="status new">7 откликов</span></div><button class="btn btn-primary">Смотреть все отклики</button><button class="btn btn-quiet">Редактировать</button><button class="btn btn-quiet">Снять с публикации</button></div></article><article class="arow"><div class="am"><h2><a href="#/job">Сборка мебели: три шкафа</a></h2><div class="sum tnum">5 000 ₽<em>за задание</em></div><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-cal"/></svg>12 августа · 3 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Сельма</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-eye"/></svg>84 просмотра</span></div><div class="next"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-info"/></svg>Мало откликов — похожие заявки предлагают от 5 400 ₽</div></div><div class="aside2"><div class="top"><span class="status wait">2 отклика</span></div><button class="btn btn-quiet">Смотреть отклики</button><button class="btn btn-quiet">Поднять цену</button></div></article></section></main></section>
+<section class="view" data-view="chat"><main class="wrap acols"><aside class="amenu"><div class="panel"><a href="#/responses"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>Мои отклики<span class="c tnum">3</span></a><a href="#/myjobs"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg>Мои заявки<span class="c tnum">2</span></a><a href="#/chat" class="on"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>Сообщения<span class="c tnum">2</span></a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>Избранное<span class="c tnum">3</span></a><div class="msep"></div><a href="#/profile"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>Профиль и отзывы</a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Выплаты</a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg>Настройки</a></div></aside><section class="amain"><div class="ahead"><h1>Сообщения</h1><span class="cnt">2 непрочитанных</span></div><nav class="tabs"><a href="#" class="on">Все<span class="n tnum">4</span></a><a href="#">Непрочитанные<span class="n tnum">2</span></a><a href="#">По заявкам</a></nav><div class="chatwrap"><div class="dlgs"><div class="srch"><input placeholder="Поиск по сообщениям"></div><div class="dlist"><div class="di on"><span class="ava">БС</span><div class="t"><div class="nm">ООО «Балтстрой»<span class="unread"></span></div><div class="last">Ждём вас к 14:00, спросите Бориса на проходной</div></div><span class="tm">13:24</span></div><div class="di"><span class="ava">ЕВ</span><div class="t"><div class="nm">ТЦ «Европа»<span class="unread"></span></div><div class="last">Форму выдадим на месте, приходите за 10 минут</div></div><span class="tm">12:05</span></div><div class="di"><span class="ava">МК</span><div class="t"><div class="nm">Марина К.</div><div class="last">Спасибо! Всё отлично, оставила отзыв</div></div><span class="tm">вчера</span></div><div class="di"><span class="ava">СД</span><div class="t"><div class="nm">СтройДом</div><div class="last">Подсобный на 14 августа — готовы взять</div></div><span class="tm">9 авг</span></div></div></div><div class="conv"><div class="convh"><span class="ava">БС</span><div class="grow"><b>ООО «Балтстрой»</b><div class="st">Был в сети 5 минут назад</div></div><button class="btn btn-quiet btn-sm"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-shield"/></svg>Пожаловаться</button></div><div class="jobstrip"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-grid"/></svg><span><b>Разгрузить фуру с плиткой</b> · 4 500 ₽ · Сегодня 14:00</span><span class="grow"></span><a class="btn btn-quiet btn-sm" href="#/job">Открыть заявку</a></div><div class="msgs"><span class="day">Сегодня</span><div class="msg you">Здравствуйте! Видел ваш отклик. Подтвердите, что будете к 14:00?<div class="tm tnum">13:02</div></div><div class="msg mine">Да, буду вовремя. Паспорт возьму с собой.<div class="tm tnum">13:04</div></div><div class="sys"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-shield"/></svg> Заказчик выбрал вас исполнителем. 4 500 ₽ зарезервированы — деньги придут после подтверждения работы.</div><div class="msg you">Отлично. Ждём вас к 14:00, спросите Бориса на проходной.<div class="tm tnum">13:24</div></div></div><div class="compose"><button class="btn btn-quiet btn-icon" aria-label="Прикрепить"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button><input placeholder="Напишите сообщение…"><button class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>Отправить</button></div></div></div></section></main></section>
+<section class="view" data-view="profile"><main class="wrap acols"><aside class="amenu"><div class="panel"><a href="#/responses"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>Мои отклики<span class="c tnum">3</span></a><a href="#/myjobs"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg>Мои заявки<span class="c tnum">2</span></a><a href="#/chat"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>Сообщения<span class="c tnum">2</span></a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg>Избранное<span class="c tnum">3</span></a><div class="msep"></div><a href="#/profile" class="on"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>Профиль и отзывы</a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Выплаты</a><a href="#"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg>Настройки</a></div></aside><section class="amain"><div class="phero"><span class="ava">АК</span><div class="grow"><h1>Антон К.</h1><div class="sub">Исполнитель и заказчик · в Дельнике с марта 2025 · Калининград</div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,8 · 34 отзыва</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-walk"/></svg>Готов выезжать по городу</span></div></div><button class="btn btn-quiet">Редактировать профиль</button></div><div class="stats"><div class="stat"><div class="v tnum">47</div><div class="k">Заданий выполнено</div></div><div class="stat"><div class="v tnum">4,8</div><div class="k">Средний рейтинг</div></div><div class="stat"><div class="v tnum">12</div><div class="k">Позвали повторно</div></div><div class="stat"><div class="v tnum">10 мин</div><div class="k">Средний ответ</div></div></div><div class="panel panel-p" style="margin-bottom:16px"><h3>Профиль заполнен на 80%</h3><div class="prog"><i></i></div><div class="todo"><div><svg class="ic done" aria-hidden="true"><use href="#i-check"/></svg><span>Паспорт подтверждён</span></div><div><svg class="ic done" aria-hidden="true"><use href="#i-check"/></svg><span>Номер телефона подтверждён</span></div><div><svg class="ic wait" aria-hidden="true"><use href="#i-plus"/></svg><span>Добавьте фото — таких исполнителей выбирают чаще</span></div><div><svg class="ic wait" aria-hidden="true"><use href="#i-plus"/></svg><span>Укажите транспорт — откроется категория «Курьеры»</span></div></div></div><nav class="tabs"><a href="#" class="on">Отзывы<span class="n tnum">34</span></a><a href="#">О себе</a><a href="#">Документы</a><a href="#">Статистика</a></nav><article class="rev"><div class="revh"><span class="ava">БС</span><div class="grow"><b>ООО «Балтстрой»</b><div class="dt">3 августа</div></div><span class="stars"><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg></span></div><p>Приехал вовремя, работал быстро и аккуратно. Зовём снова.</p><a class="jl" href="#/job"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-grid"/></svg>Разгрузка стройматериалов</a></article><article class="rev"><div class="revh"><span class="ava">МК</span><div class="grow"><b>Марина К.</b><div class="dt">28 июля</div></div><span class="stars"><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg></span></div><p>Всё сделал аккуратно, даже мусор вынес без напоминания. Рекомендую.</p><a class="jl" href="#/job"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-grid"/></svg>Уборка квартиры после ремонта</a></article><article class="rev"><div class="revh"><span class="ava">СД</span><div class="grow"><b>СтройДом</b><div class="dt">19 июля</div></div><span class="stars"><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-on" aria-hidden="true"><use href="#i-star"/></svg><svg class="ic st-off" aria-hidden="true"><use href="#i-star"/></svg></span></div><p>Хорошая работа. Опоздал на 15 минут, но предупредил заранее.</p><a class="jl" href="#/job"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-grid"/></svg>Подсобный рабочий на объект</a></article></section></main></section>
+<section class="view" data-view="states"><main class="wrap stwrap"><div class="phead"><h1>Состояния интерфейса</h1><span class="cnt">те же компоненты, что и на главной</span></div><section class="stsec"><div class="stlab">КНОПКИ</div><div class="strow"><button class="btn btn-primary">Откликнуться</button><button class="btn btn-primary is-hover">Наведение</button><button class="btn btn-primary is-focus">Фокус с клавиатуры</button><button class="btn btn-primary is-loading">Отправка</button><button class="btn is-disabled" disabled>Уже откликнулись</button><button class="btn btn-outline"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Разместить заявку</button><button class="btn btn-quiet">Подробнее</button></div></section><section class="stsec"><div class="stlab">ФИЛЬТРЫ И ЧИПЫ</div><div class="strow"><button class="chip"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg>Обычный <span class="n tnum">38</span></button><button class="chip is-hover"><svg class="ic" aria-hidden="true"><use href="#i-cal"/></svg>Наведение <span class="n tnum">54</span></button><button class="chip on"><svg class="ic" aria-hidden="true"><use href="#i-bolt"/></svg>Выбран <span class="n tnum">12</span></button><button class="chip is-focus"><svg class="ic" aria-hidden="true"><use href="#i-walk"/></svg>Фокус <span class="n tnum">21</span></button><span class="pill">Завтра</span><span class="pill on">Сегодня — выбрано</span></div></section><section class="stsec"><div class="stlab">СТРОКА ЗАЯВКИ — ОБЫЧНАЯ И ПОД КУРСОРОМ</div><div class="list"><article class="row "><div class="rmain"><div class="rtop"><h2><a href="#/job">Уборка квартиры после ремонта</a></h2></div><div class="price"><b class="tnum">3 800 ₽</b><span>за задание · 760 ₽/ч</span></div><p class="desc">Двушка 62 м², моющие средства и пылесос у заказчика, вынос мусора не нужен.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 18:30 · 5 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>ул. Черняховского · 1,4 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>12 мин пешком</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,8 · 47 заданий</span></div><div class="author"><span class="ava">МК</span><span><b>Марина К.</b><em>Заказчик</em></span></div></div><div class="rside"><span class="posted">40 минут назад</span><div class="rfoot"><span class="replies">3 отклика</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article><article class="row is-hover"><div class="rmain"><div class="rtop"><h2><a href="#/job">Промоутер у ТЦ «Европа»</a></h2></div><div class="price"><b class="tnum">2 200 ₽</b><span>за день · 440 ₽/ч</span></div><p class="desc">Раздача листовок у входа, форма и материалы выдаём на месте.</p><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 16:00 · 5 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>пл. Победы · 0,9 км</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-walk"/></svg>11 мин пешком</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg>4,9 · 210 заданий</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">ЕВ</span><span><b>ТЦ «Европа»</b><em>Компания</em></span></div></div><div class="rside"><span class="posted">1 час назад</span><div class="rfoot"><span class="replies">6 откликов</span><div class="racts"><button class="btn btn-quiet btn-icon" aria-label="В избранное"><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></button><a class="btn btn-primary" href="#/apply">Откликнуться</a></div></div></div></article></div><p class="stnote">Под курсором: граница темнеет, появляется мягкая тень, заголовок подчёркивается.</p></section><section class="stsec"><div class="stlab">ЗАГРУЗКА ЛЕНТЫ</div><div class="skrow"><div class="skmain"><div class="sk sk-line" style="width:46%;height:19px;margin-bottom:12px"></div><div class="sk sk-line" style="width:28%;height:24px;margin-bottom:14px"></div><div class="sk sk-line" style="width:86%;height:13px;margin-bottom:8px"></div><div class="sk sk-line" style="width:62%;height:13px;margin-bottom:16px"></div><div style="display:flex;gap:8px"><div class="sk sk-line" style="width:150px;height:28px;margin-bottom:0px"></div><div class="sk sk-line" style="width:130px;height:28px;margin-bottom:0px"></div><div class="sk sk-line" style="width:120px;height:28px;margin-bottom:0px"></div></div></div><div class="skside"><div class="sk sk-line" style="width:90px;height:13px;margin-bottom:0px"></div><div class="sk sk-line" style="width:180px;height:44px;margin-bottom:0px"></div></div></div><div class="skrow"><div class="skmain"><div class="sk sk-line" style="width:46%;height:19px;margin-bottom:12px"></div><div class="sk sk-line" style="width:28%;height:24px;margin-bottom:14px"></div><div class="sk sk-line" style="width:86%;height:13px;margin-bottom:8px"></div><div class="sk sk-line" style="width:62%;height:13px;margin-bottom:16px"></div><div style="display:flex;gap:8px"><div class="sk sk-line" style="width:150px;height:28px;margin-bottom:0px"></div><div class="sk sk-line" style="width:130px;height:28px;margin-bottom:0px"></div><div class="sk sk-line" style="width:120px;height:28px;margin-bottom:0px"></div></div></div><div class="skside"><div class="sk sk-line" style="width:90px;height:13px;margin-bottom:0px"></div><div class="sk sk-line" style="width:180px;height:44px;margin-bottom:0px"></div></div></div></section><section class="stsec"><div class="stlab">НИЧЕГО НЕ НАЙДЕНО</div><div class="panel"><div class="empty"><div class="glyph"><svg class="ic ic-lg" aria-hidden="true"><use href="#i-search"/></svg></div><h3>По этим фильтрам заявок нет</h3><p>Сегодня пешком до 20 минут и от 2 000 ₽ ничего нет. Рядом есть 21 заявка на завтра и 9 заявок чуть дальше.</p><div class="strow" style="justify-content:center"><button class="btn btn-primary">Показать завтрашние</button><button class="btn btn-quiet">Сбросить фильтры</button></div></div></div></section><section class="stsec"><div class="stlab">ОШИБКА ЗАГРУЗКИ</div><div class="alert"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><div><b>Не удалось загрузить заявки</b><p>Проверьте соединение с интернетом. Мы сохранили ваши фильтры — ничего не потеряется.</p><button class="btn btn-quiet btn-sm"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-refresh"/></svg>Повторить</button></div></div></section></main></section>
+
+<footer class="foot"><div class="wrap foot-in">
+  <span>Дельник · Подработка рядом</span>
+  <a href="#/feed/all">Как это работает</a>
+  <a href="#/feed/all">Безопасность сделок</a>
+  <a href="#/chat">Поддержка</a>
+  <a href="#/states">Состояния интерфейса</a>
+  <span class="grow"></span>
+  <span>Калининград</span>
+</div></footer>
+
+<script>
+(function(){
+  var CAT = {"all": "Подработка в Калининграде", "pogruzka": "Погрузка и грузчики", "uborka": "Уборка", "kurjery": "Курьеры", "strojka": "Стройка и ремонт", "mebel": "Мебель", "promo": "Промо", "sklad": "Склад", "raznoe": "Разное"};
+  var TITLES = {"feed": "Дельник — Подработка в Калининграде", "job": "Дельник — Заявка", "apply": "Дельник — Отклик", "create": "Дельник — Разместить заявку", "responses": "Дельник — Мои отклики", "myjobs": "Дельник — Мои заявки", "chat": "Дельник — Сообщения", "profile": "Дельник — Профиль", "states": "Дельник — Состояния интерфейса"};
+  var $ = function(id){ return document.getElementById(id); };
+
+  function plural(n){
+    var a = n % 10, b = n % 100;
+    if(a === 1 && b !== 11) return 'заявка';
+    if(a >= 2 && a <= 4 && (b < 10 || b > 20)) return 'заявки';
+    return 'заявок';
+  }
+
+  function route(){
+    var h = (location.hash || '').replace(/^#\/?/, '');
+    if(!h){ h = document.body.getAttribute('data-route') || 'feed/all'; }
+    var p = h.split('/');
+    return { view: p[0] || 'feed', cat: p[1] || 'all' };
+  }
+
+  function paintFeed(cat){
+    if(!CAT[cat]){ cat = 'all'; }
+    var rows = document.querySelectorAll('#feed-list [data-cat]');
+    var n = 0, i;
+    for(i = 0; i < rows.length; i++){
+      var match = (cat === 'all') || (rows[i].getAttribute('data-cat') === cat);
+      rows[i].hidden = !match;
+      if(match){ n++; }
+    }
+    $('feed-h1').textContent = CAT[cat];
+    $('feed-cnt').textContent = n + ' ' + plural(n) + (cat === 'all' ? ' в городе' : ' в категории');
+    $('crumb-cat').textContent = (cat === 'all') ? 'Подработка' : CAT[cat];
+    $('feed-listhead').textContent = (cat === 'all') ? 'Все заявки' : CAT[cat];
+    $('near-block').hidden = (cat !== 'all');
+    $('feed-pager').hidden = (cat !== 'all');
+    $('feed-empty').hidden = (n > 0);
+    var links = document.querySelectorAll('.catnav a[data-cat]');
+    for(i = 0; i < links.length; i++){
+      var on = links[i].getAttribute('data-cat') === cat;
+      links[i].className = on ? 'on' : '';
+      if(on){ links[i].setAttribute('aria-current', 'page'); }
+      else { links[i].removeAttribute('aria-current'); }
+    }
+  }
+
+  function render(){
+    var r = route();
+    var views = document.querySelectorAll('.view');
+    var found = false, i;
+    for(i = 0; i < views.length; i++){
+      var on = views[i].getAttribute('data-view') === r.view;
+      if(on){ found = true; }
+      if(on){ views[i].classList.add('on'); } else { views[i].classList.remove('on'); }
+    }
+    if(!found){
+      r.view = 'feed';
+      document.querySelector('.view[data-view="feed"]').classList.add('on');
+    }
+    if(r.view === 'feed'){ paintFeed(r.cat); }
+    document.title = TITLES[r.view] || TITLES.feed;
+    window.scrollTo(0, 0);
+  }
+
+  window.addEventListener('hashchange', render);
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', render);
+  } else {
+    render();
+  }
+})();
+</script>
+</body>
+</html>
