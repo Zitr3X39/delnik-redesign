@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Дельник — карта прототипа</title>
+<title>Дельник — Разместить заявку</title>
 <style>
 :root{
   --brand:#f26522; --brand-strong:#c8461a; --brand-soft:#fff1e8; --brand-line:#f6c4a8;
@@ -207,119 +207,89 @@ a{color:inherit}
 .skmain{flex:1;min-width:0}
 .skside{width:214px;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
 
-.acols{display:flex;gap:24px;align-items:flex-start;padding:20px 0 48px}
-.amenu{width:250px;flex:none;position:sticky;top:20px}
-.amenu .panel{padding:8px}
-.amenu a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;text-decoration:none;font-size:14.8px;color:var(--ink-2);font-weight:550}
-.amenu a:hover{background:var(--line-2)}
-.amenu a.on{background:var(--brand-soft);color:var(--brand-strong);font-weight:700}
-.amenu a .c{margin-left:auto;font-size:13px;color:var(--ink-3)}
-.amenu a.on .c{color:var(--brand-strong)}
-.amenu .msep{height:1px;background:var(--line-2);margin:8px 12px}
-.amain{flex:1;min-width:0}
-.ahead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:16px}
-.ahead h1{margin:0;font-size:26px;letter-spacing:-.028em;line-height:1.2}
-.ahead .cnt{color:var(--ink-3);font-size:14.5px}
-.ahead .grow{flex:1}
-.tabs{display:flex;gap:26px;border-bottom:1px solid var(--line);margin-bottom:18px}
-.tabs a{padding:0 0 13px;font-size:15px;color:var(--ink-3);text-decoration:none;display:flex;align-items:center;gap:7px;white-space:nowrap}
-.tabs a:hover{color:var(--ink-2)}
-.tabs a.on{color:var(--ink);font-weight:650;box-shadow:inset 0 -2px 0 var(--brand)}
-.tabs .n{font-size:13px;color:var(--ink-3)}
-.arow{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:12px;display:flex;gap:20px}
-.arow .am{flex:1;min-width:0}
-.arow h2{margin:0 0 8px;font-size:17.5px;letter-spacing:-.018em;line-height:1.3}
-.arow h2 a{text-decoration:none}
-.arow h2 a:hover{text-decoration:underline;text-underline-offset:3px}
-.arow .sum{font-size:20px;font-weight:800;letter-spacing:-.026em;margin-bottom:9px}
-.arow .sum em{font-style:normal;font-size:13.4px;font-weight:500;color:var(--ink-3);margin-left:8px}
-.aside2{width:224px;flex:none;display:flex;flex-direction:column;align-items:stretch;gap:9px}
-.aside2 .btn{width:100%}
-.aside2 .top{display:flex;justify-content:flex-end;margin-bottom:2px}
-.status{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;padding:5px 10px;border-radius:7px;white-space:nowrap}
-.status.wait{background:var(--line-2);color:var(--ink-2)}
-.status.new{background:var(--brand-soft);color:var(--brand-strong)}
-.status.ok{background:var(--ok-soft);color:#155f3d}
-.status.off{background:var(--bad-soft);color:#8d2a22}
-.next{font-size:13.6px;color:var(--ink-3);margin-top:11px;display:flex;align-items:center;gap:7px}
-.apps{margin-top:15px;border-top:1px solid var(--line-2);padding-top:4px}
-.app{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-2)}
-.app:last-child{border-bottom:0}
-.app .ava{width:36px;height:36px;font-size:13px}
-.app .nm{font-size:14.8px;font-weight:600}
-.app .sub{font-size:13.2px;color:var(--ink-3);margin-top:3px;display:flex;gap:12px;flex-wrap:wrap}
-.app .sub span{display:flex;align-items:center;gap:5px}
-.app .acts{margin-left:auto;display:flex;gap:8px;flex:none}
-.chatwrap{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;height:588px}
-.dlgs{width:330px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
-.dlgs .srch{padding:13px;border-bottom:1px solid var(--line-2)}
-.dlgs .srch input{width:100%;height:40px;border:1px solid var(--line);border-radius:9px;padding:0 12px;font-size:14.5px;background:#fff}
-.dlist{overflow:auto;flex:1}
-.di{display:flex;gap:11px;padding:13px 14px;border-bottom:1px solid var(--line-2);min-width:0}
-.di.on{background:#f6f8fa}
-.di .ava{width:40px;height:40px;font-size:14px}
-.di .t{flex:1;min-width:0}
-.di .nm{font-size:14.6px;font-weight:650;display:flex;align-items:center;gap:8px}
-.di .last{font-size:13.4px;color:var(--ink-3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.di .tm{font-size:12.4px;color:var(--ink-3);white-space:nowrap}
-.unread{width:8px;height:8px;border-radius:50%;background:var(--brand);flex:none}
-.conv{flex:1;display:flex;flex-direction:column;min-width:0}
-.convh{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line-2)}
-.convh .grow{flex:1;min-width:0}
-.convh .ava{width:40px;height:40px;font-size:14px}
-.convh b{font-size:15.5px;display:block}
-.convh .st{font-size:13.2px;color:var(--ink-3);margin-top:2px}
-.jobstrip{display:flex;align-items:center;gap:14px;padding:12px 18px;background:#f6f8fa;border-bottom:1px solid var(--line-2);font-size:14px;color:var(--ink-2)}
-.jobstrip b{font-weight:650;color:var(--ink)}
-.jobstrip .grow{flex:1}
-.msgs{flex:1;overflow:auto;padding:20px 18px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
-.day{align-self:center;font-size:12.6px;color:var(--ink-3);background:#e8ecf0;padding:4px 12px;border-radius:20px}
-.sys{align-self:center;text-align:center;font-size:13.6px;color:#155f3d;background:var(--ok-soft);padding:10px 15px;border-radius:11px;max-width:470px;line-height:1.45}
-.msg{max-width:66%;padding:11px 14px;border-radius:14px;font-size:14.8px;line-height:1.5}
-.msg .tm{font-size:11.8px;color:var(--ink-3);margin-top:5px;text-align:right}
-.msg.you{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:5px}
-.msg.mine{align-self:flex-end;background:var(--brand-soft);border:1px solid var(--brand-line);border-bottom-right-radius:5px}
-.compose{display:flex;gap:10px;padding:13px 18px;border-top:1px solid var(--line-2);background:#fff}
-.compose input{flex:1;height:44px;border:1px solid var(--line);border-radius:10px;padding:0 14px;font-size:15px;background:#fff}
-.phero{display:flex;gap:20px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:14px}
-.phero .ava{width:84px;height:84px;font-size:27px}
-.phero h1{margin:0 0 6px;font-size:25px;letter-spacing:-.028em}
-.phero .sub{color:var(--ink-3);font-size:14.6px;margin-bottom:13px}
-.phero .grow{flex:1;min-width:0}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px}
-.stat{padding:16px 18px;border-left:1px solid var(--line-2)}
-.stat:first-child{border-left:0}
-.stat .v{font-size:22px;font-weight:800;letter-spacing:-.028em}
-.stat .k{font-size:13px;color:var(--ink-3);margin-top:5px}
-.rev{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:12px}
-.revh{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-.revh .ava{width:38px;height:38px;font-size:13px}
-.revh b{font-size:15px;display:block}
-.revh .dt{font-size:13px;color:var(--ink-3);margin-top:2px}
-.revh .grow{flex:1;min-width:0}
-.stars{display:flex;gap:2px}
-.stars .ic{width:15px;height:15px}
-.st-on{color:var(--brand);fill:currentColor}
-.st-off{color:#cfd6dc}
-.rev p{margin:0;font-size:15px;color:var(--ink-2);line-height:1.55}
-.rev .jl{display:inline-flex;gap:6px;align-items:center;margin-top:11px;font-size:13.6px;color:var(--ink-3);text-decoration:none}
-.rev .jl:hover{color:var(--brand-strong)}
-.prog{height:8px;border-radius:5px;background:var(--line-2);overflow:hidden;margin:12px 0 10px}
-.prog i{display:block;height:100%;background:var(--ok);width:80%}
-.todo{display:flex;flex-direction:column;gap:9px}
-.todo div{display:flex;gap:10px;font-size:14.2px;color:var(--ink-2);line-height:1.45}
-.todo .ic{flex:none;margin-top:2px}
-.todo .done{color:var(--ok)}
-.todo .wait{color:var(--ink-3)}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.card{display:block;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;text-decoration:none}
-.card:hover{border-color:#cdd5db;box-shadow:var(--sh-2)}
-.card b{display:block;font-size:16.5px;margin-bottom:6px;letter-spacing:-.016em}
-.card span{font-size:14px;color:var(--ink-3);line-height:1.5;display:block}
-.idxwrap{padding:26px 0 48px}
-.idxwrap h1{margin:0 0 6px;font-size:28px;letter-spacing:-.03em}
-.idxwrap .lead{color:var(--ink-3);font-size:15px;margin:0 0 22px}
-.idxwrap h2{font-size:14px;letter-spacing:.04em;color:var(--ink-3);margin:26px 0 12px}
+.dcols{display:flex;gap:24px;align-items:flex-start;padding-bottom:48px}
+.dmain{flex:1;min-width:0}
+.dside{width:340px;flex:none;position:sticky;top:20px}
+.dhead{margin-bottom:18px}
+.dhead h1{margin:0 0 10px;font-size:30px;letter-spacing:-.032em;line-height:1.18}
+.dmetaline{display:flex;gap:14px;flex-wrap:wrap;color:var(--ink-3);font-size:14px;align-items:center}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px}
+.fact{padding:16px 18px;border-left:1px solid var(--line-2);min-width:0}
+.fact:first-child{border-left:0}
+.fact .k{font-size:12.5px;color:var(--ink-3);margin-bottom:7px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.fact .v{font-size:19px;font-weight:750;letter-spacing:-.022em;line-height:1.25}
+.fact .s{font-size:13.4px;color:var(--ink-3);margin-top:4px}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:16px}
+.sec h2{margin:0 0 14px;font-size:19px;letter-spacing:-.024em}
+.sec p{margin:0 0 12px;font-size:15.4px;color:var(--ink-2);line-height:1.6}
+.sec p:last-child{margin-bottom:0}
+.ul{list-style:none;padding:0;margin:0}
+.ul li{display:flex;gap:10px;padding:7px 0;font-size:15.2px;color:var(--ink-2);line-height:1.5}
+.ul li .ic{color:var(--ok);margin-top:3px;flex:none}
+.who{display:flex;gap:14px;align-items:flex-start}
+.who .ava{width:52px;height:52px;font-size:17px}
+.who b{font-size:17px;display:block;letter-spacing:-.018em;margin-bottom:3px}
+.who .role{font-size:14px;color:var(--ink-3);margin-bottom:11px}
+.quote{border-left:2px solid var(--line);padding-left:14px;margin:16px 0 0;color:var(--ink-2);font-size:14.8px;line-height:1.55}
+.quote cite{display:block;font-style:normal;font-size:13.4px;color:var(--ink-3);margin-top:6px}
+.linkmore{display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:14.5px;color:var(--brand-strong);text-decoration:none;font-weight:600}
+.callout{display:flex;gap:12px;padding:16px;border-radius:12px;background:var(--ok-soft);border:1px solid #c9e5d6;margin-bottom:16px}
+.callout .ic{color:#155f3d;margin-top:2px;flex:none}
+.callout b{display:block;font-size:15px;margin-bottom:3px}
+.callout p{margin:0;font-size:14.4px;color:#1c4634;line-height:1.55}
+.buy .amount{font-size:32px;font-weight:800;letter-spacing:-.036em;line-height:1.1}
+.buy .per{color:var(--ink-3);font-size:14.4px;margin:5px 0 14px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.stack .btn{width:100%}
+.sidehint{font-size:13.5px;color:var(--ink-3);text-align:center;margin-top:12px}
+.trust-list{display:flex;flex-direction:column;gap:11px}
+.trust-list div{display:flex;gap:10px;font-size:14.2px;color:var(--ink-2);line-height:1.45}
+.trust-list .ic{color:var(--ok);flex:none;margin-top:2px}
+.steps{margin:0;padding:0;list-style:none}
+.steps li{display:flex;gap:12px;padding:8px 0;font-size:14.3px;color:var(--ink-2);line-height:1.45}
+.steps .no{width:23px;height:23px;border-radius:50%;background:var(--brand-soft);color:var(--brand-strong);font-size:12.5px;font-weight:700;display:grid;place-items:center;flex:none;margin-top:1px}
+.dlgpage{padding:30px 0 52px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.dlg{width:580px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-2);overflow:hidden}
+.dlg-h{display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line-2)}
+.dlg-h h2{margin:0;font-size:18px;letter-spacing:-.022em;flex:1}
+.dlg-b{padding:22px}
+.dlg-f{display:flex;gap:10px;padding:18px 22px;border-top:1px solid var(--line-2);background:#fbfcfd}
+.jobline{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:14px 16px;background:#f4f6f8;border-radius:11px;margin-bottom:20px}
+.jobline b{font-size:15.4px;letter-spacing:-.012em}
+.jobline span{font-size:13.6px;color:var(--ink-3);display:block;margin-top:3px}
+.jobline .amt{font-size:19px;font-weight:800;letter-spacing:-.024em;white-space:nowrap}
+.f-lbl{font-size:14px;font-weight:650;margin-bottom:8px;display:block}
+.f-hint{font-size:13.4px;color:var(--ink-3);margin-top:8px;line-height:1.5}
+.inp{width:100%;height:46px;border:1px solid var(--line);border-radius:10px;padding:0 13px;font-size:15px;background:#fff}
+.inp::placeholder{color:var(--ink-3)}
+.ta{width:100%;min-height:96px;border:1px solid var(--line);border-radius:10px;padding:12px 13px;font-size:15px;line-height:1.55;resize:none;background:#fff;font-family:inherit}
+.fld{margin-bottom:20px}
+.fld:last-child{margin-bottom:0}
+.seg{display:inline-flex;background:var(--line-2);border-radius:10px;padding:3px}
+.seg button{height:38px;padding:0 16px;border:0;background:transparent;border-radius:8px;font-size:14.5px;font-weight:600;color:var(--ink-2)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:var(--sh-1)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sw{width:44px;height:26px;border-radius:14px;background:#cfd6dc;position:relative;flex:none;border:0}
+.sw.on{background:var(--ok)}
+.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+.sw.on i{left:21px}
+.swrow{display:flex;gap:14px;align-items:flex-start}
+.money-in{position:relative;max-width:260px}
+.money-in .inp{height:54px;font-size:22px;font-weight:750;padding-right:36px;letter-spacing:-.02em}
+.money-in .cur{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:17px}
+.counter{float:right;font-size:13px;color:var(--ink-3);font-weight:400}
+.ok-mark{width:56px;height:56px;border-radius:50%;background:var(--ok-soft);color:#155f3d;display:grid;place-items:center;margin:0 auto 16px}
+.dlg-ok{text-align:center;padding:30px 26px 26px}
+.dlg-ok h2{margin:0 0 9px;font-size:21px;letter-spacing:-.024em}
+.dlg-ok p{margin:0 auto;max-width:400px;font-size:15px;color:var(--ink-2);line-height:1.55}
+.pvhead{font-size:12.5px;font-weight:700;color:var(--ink-3);letter-spacing:.05em;margin-bottom:10px}
+.row.compact{padding:16px}
+.row.compact .rtop h2{font-size:16.5px}
+.row.compact .price b{font-size:21px}
+.tiplist{display:flex;flex-direction:column;gap:10px}
+.tiplist div{display:flex;gap:10px;font-size:14.1px;color:var(--ink-2);line-height:1.45}
+.tiplist .ic{color:var(--brand-strong);flex:none;margin-top:2px}
+.stlab{font-size:12.5px;font-weight:700;color:var(--ink-3);letter-spacing:.05em;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -369,7 +339,7 @@ a{color:inherit}
   </div>
 </div></header>
 <nav class="catnav"><div class="wrap catnav-in"><a href="main.html" class="on">Все заявки</a><a href="#">Погрузка и грузчики</a><a href="#">Уборка</a><a href="#">Курьеры</a><a href="#">Стройка и ремонт</a><a href="#">Мебель</a><a href="#">Промо</a><a href="#">Склад</a><a href="#">Разное</a><span class="grow"></span><span class="muted">96 новых заявок сегодня</span></div></nav>
-<main class="wrap idxwrap"><h1>Дельник — прототип редизайна</h1><p class="lead">Десктоп, светлая тема. Одна дизайн-система на все экраны: токены, 27 иконок, один набор компонентов. Флаттер и бэкенд не затронуты.</p><h2>ПОИСК И ЗАЯВКИ</h2><div class="grid3"><a class="card" href="main.html"><b>Главная — лента заявок</b><span>Общий каталог, фильтры и блок «Начинается в ближайшие часы»</span></a><a class="card" href="detail.html"><b>Экран заявки</b><span>Условия, заказчик, гарантия оплаты и панель отклика</span></a><a class="card" href="apply.html"><b>Отклик</b><span>Форма с сообщением и экран подтверждения</span></a></div><h2>ЛИЧНЫЙ КАБИНЕТ</h2><div class="grid3"><a class="card" href="responses.html"><b>Мои отклики</b><span>Статусы откликов и вкладки: активные, приглашения, выполненные</span></a><a class="card" href="myjobs.html"><b>Мои заявки</b><span>Взгляд заказчика: отклики и выбор исполнителя</span></a><a class="card" href="chat.html"><b>Сообщения</b><span>Диалоги с контекстом заявки и статусом оплаты</span></a><a class="card" href="profile.html"><b>Профиль и отзывы</b><span>Рейтинг, статистика, отзывы и заполненность</span></a><a class="card" href="create.html"><b>Публикация заявки</b><span>Форма с живым превью карточки в ленте</span></a></div><h2>СЛУЖЕБНОЕ</h2><div class="grid3"><a class="card" href="states.html"><b>Состояния интерфейса</b><span>Наведение, фокус, загрузка, пусто, ошибка</span></a></div></main>
+<div class="wrap"><nav class="crumbs"><a href="#">Дельник</a><span class="sep">/</span><a href="#">Калининград</a><span class="sep">/</span><a href="#">Подработка</a><span class="sep">/</span><span>Разместить заявку</span></nav></div><main class="wrap dcols"><section class="dmain"><div class="dhead"><h1>Разместить заявку</h1><div class="dmetaline"><span>Первый отклик обычно приходит за 15 минут</span><span>Публикация бесплатная</span></div></div><div class="sec"><h2>Что нужно сделать</h2><div class="fld"><label class="f-lbl">Категория</label><div class="pill-row"><button class="pill on">Погрузка</button><button class="pill">Уборка</button><button class="pill">Курьеры</button><button class="pill">Стройка</button><button class="pill">Мебель</button><button class="pill">Промо</button><button class="pill">Склад</button><button class="pill">Разное</button></div></div><div class="fld"><label class="f-lbl">Заголовок<span class="counter">28 / 70</span></label><input class="inp" value="Разгрузить фуру с плиткой"><p class="f-hint">Напишите суть задания одной строкой, как сказали бы знакомому.</p></div><div class="fld"><label class="f-lbl">Описание</label><textarea class="ta">Коробки по 20–25 кг, около 400 штук. Перенести на склад — 30 метров по ровному, без лестниц. Перчатки выдаём.</textarea></div></div><div class="sec"><h2>Когда и сколько</h2><div class="fld"><label class="f-lbl">День</label><div class="pill-row"><button class="pill on">Сегодня</button><button class="pill">Завтра</button><button class="pill">Выбрать дату</button><button class="pill">Гибкое время</button></div></div><div class="two"><div><label class="f-lbl">Начало</label><input class="inp tnum" value="14:00"></div><div><label class="f-lbl">Длительность</label><input class="inp" value="4 часа"></div></div></div><div class="sec"><h2>Сколько платите</h2><div class="fld"><div class="seg"><button class="on">За задание</button><button>За час</button></div></div><div class="fld"><div class="money-in"><input class="inp tnum" value="4 500"><span class="cur">₽</span></div><p class="f-hint">Похожие заявки в Калининграде — от 3 800 до 5 200 ₽. С такой суммой откликаются примерно за 20 минут.</p></div></div><div class="sec"><h2>Где</h2><div class="fld"><input class="inp" value="Московский пр-т, 12"><label class="check"><span class="box on"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg></span>Точный адрес показать только выбранному исполнителю</label></div></div><div class="sec"><h2>Безопасность</h2><div class="swrow"><button class="sw on" aria-label="Гарантия оплаты"><i></i></button><div><b style="font-size:15.4px">Гарантия оплаты</b><p style="margin:5px 0 0;font-size:14.4px;color:var(--ink-2);line-height:1.55">Сумма резервируется при найме и переводится исполнителю после вашего подтверждения. Заявки с гарантией получают вдвое больше откликов.</p></div></div></div><div class="strow" style="gap:10px"><button class="btn btn-primary btn-lg">Опубликовать заявку</button><button class="btn btn-quiet btn-lg">Сохранить черновик</button></div></section><aside class="dside"><div class="pvhead">ТАК ЗАЯВКУ УВИДЯТ В ЛЕНТЕ</div><article class="row compact"><div class="rmain"><div class="rtop"><h2><a href="#">Разгрузить фуру с плиткой</a></h2></div><div class="price"><b class="tnum">4 500 ₽</b><span>за задание</span></div><div class="meta"><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-clock"/></svg>Сегодня 14:00 · 4 ч</span><span><svg class="ic ic-sm" aria-hidden="true"><use href="#i-pin"/></svg>Московский пр-т</span></div><div class="trust"><span class="badge ok"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>Личность проверена</span><span class="badge"><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg>Гарантия оплаты</span></div><div class="author"><span class="ava">БС</span><span><b>ООО «Балтстрой»</b><em>Компания</em></span></div></div></article><div class="panel panel-p" style="margin-top:16px"><h3>Что ускоряет отклики</h3><div class="tiplist"><div><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>Точное время начала вместо «гибко»</span></div><div><svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg><span>Сумма сразу, без «договоримся»</span></div><div><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><span>Включённая гарантия оплаты</span></div><div><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><span>Одно-два предложения о том, что именно делать</span></div></div></div></aside></main>
 <footer class="foot"><div class="wrap foot-in">
   <span>Дельник · Подработка рядом</span>
   <a href="#">Как это работает</a>
