@@ -48,3 +48,11 @@ app.*.map.json
 android/key.properties
 *.jks
 *.keystore
+
+# Redesign ui-v2: временные пайлоады прототипа.
+# ВНИМАНИЕ: web/v2/p0.js … p8.js КОММИТИТЬ ОБЯЗАТЕЛЬНО — без них прототип не работает.
+*.b64
+*.b64.*
+*.gz.b64*
+*.xz.b64*
+/tools/v2/
